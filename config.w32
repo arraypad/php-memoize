@@ -1,0 +1,13 @@
+// $Id$
+// vim:ft=javascript
+
+// If your extension references something external, use ARG_WITH
+// ARG_WITH("memoize", "for memoize support", "no");
+
+// Otherwise, use ARG_ENABLE
+// ARG_ENABLE("memoize", "enable memoize support", "no");
+
+if (PHP_MEMOIZE != "no") {
+	EXTENSION("memoize", "memoize.c");
+}
+
