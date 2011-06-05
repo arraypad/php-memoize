@@ -226,15 +226,25 @@ PHP_FUNCTION(memoize_call)
 		/* destroy fetch pool immediately since _apc_store creates another */
 		apc_pool_destroy(ctxt.pool TSRMLS_CC);
 
-		/* call original function */
-		zval *return_copy;
+		/* create callable for original function */
 		char *new_fname = NULL;
 		size_t new_fname_len = spprintf(&new_fname, 0, "%s%s", fname, MEMOIZE_FUNC_SUFFIX);
-		zval new_fname_zv;
-		ZVAL_STRINGL(&new_fname_zv, new_fname, new_fname_len, 0);
-		MAKE_STD_ZVAL(return_copy);
+		zval *callable;
+		MAKE_STD_ZVAL(callable);
+		if (EG(scope)) {
+			/* static method */
+			array_init_size(callable, 2);
+			add_next_index_stringl(callable, EG(scope)->name, strlen(EG(scope)->name), 0);
+			add_next_index_stringl(callable, new_fname, new_fname_len, 0);
+		} else {
+			/* function */
+			ZVAL_STRINGL(callable, new_fname, new_fname_len, 0);
+		}
 
-		if (call_user_function(EG(function_table), NULL, &new_fname_zv, return_copy, argc, (argc ? *args : NULL) TSRMLS_CC) == FAILURE) {
+		/* call original function */
+		zval *return_copy;
+		MAKE_STD_ZVAL(return_copy);
+		if (call_user_function(&EG(scope)->function_table, NULL, callable, return_copy, argc, (argc ? *args : NULL) TSRMLS_CC) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to call memoized function %s.", fname);
 		} else {
 			/* store result in apc */
@@ -256,13 +266,30 @@ PHP_FUNCTION(memoize_call)
    Memoizes the given function */
 PHP_FUNCTION(memoize)
 {
+	zend_fcall_info fci;
+	zend_fcall_info_cache fci_cache;
 	char *fname = NULL, *new_fname = NULL;
 	int fname_len;
 	size_t new_fname_len;
 	zend_function *fe, *dfe, func, dfunc;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &fname, &fname_len) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "f", &fci, &fci_cache) == FAILURE) {
 		return;
+	}
+
+	if (Z_TYPE_P(fci.function_name) == IS_ARRAY) {
+		HashTable *callable = Z_ARRVAL_P(fci.function_name);
+		zval **fname_zv;
+		if (zend_hash_index_find(callable, 1, (void **)&fname_zv) == FAILURE) {
+			/* should be impossible, array callables always have this index */
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "malformed callback");
+			return;
+		}
+		fname = estrdup(Z_STRVAL_PP(fname_zv));
+		fname_len = Z_STRLEN_PP(fname_zv);
+	} else {
+		fname = Z_STRVAL_P(fci.function_name);
+		fname_len = Z_STRLEN_P(fci.function_name);
 	}
 
 	if (!APCG(enabled)) {
@@ -273,7 +300,7 @@ PHP_FUNCTION(memoize)
 	php_strtolower(fname, fname_len);
 
 	/* find source function */
-	if (zend_hash_find(EG(function_table), fname, fname_len + 1, (void**)&fe) == FAILURE) {
+	if (zend_hash_find(fci.function_table, fname, fname_len + 1, (void**)&fe) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() not found", fname);
 		RETURN_FALSE;
 	}
@@ -294,7 +321,7 @@ PHP_FUNCTION(memoize)
 		zend_hash_add(MEMOIZE_G(internal_functions), fname, fname_len + 1, (void*)fe, sizeof(zend_function), NULL);
 	}
 	new_fname_len = spprintf(&new_fname, 0, "%s%s", fname, MEMOIZE_FUNC_SUFFIX);
-	if (zend_hash_add(EG(function_table), new_fname, new_fname_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
+	if (zend_hash_add(fci.function_table, new_fname, new_fname_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error renaming %s()", fname);
 		efree(new_fname);
 		zend_function_dtor(fe);
@@ -306,10 +333,12 @@ PHP_FUNCTION(memoize)
 	/* copy dest entry with source name */
 	dfunc = *dfe;
 	function_add_ref(&dfunc);
+	dfunc.common.scope = fe->common.scope;
+	dfunc.common.fn_flags = fe->common.fn_flags;
 	dfunc.common.function_name = fname;
 
 	/* replace source with dest */
-	if (zend_hash_update(EG(function_table), fname, fname_len + 1, &dfunc, sizeof(zend_function), NULL) == FAILURE) {
+	if (zend_hash_update(fci.function_table, fname, fname_len + 1, &dfunc, sizeof(zend_function), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error replacing %s()", fname);
 		zend_function_dtor(&func);
 		RETURN_FALSE;
