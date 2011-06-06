@@ -152,11 +152,11 @@ void memoize_arguments_hash(int argc, zval ***args, char *hash TSRMLS_DC)
 	/* construct php array from args */
 	ALLOC_ZVAL(args_array);
 	INIT_PZVAL(args_array);
-	array_init_size(args_array, argc);
+	Z_TYPE_P(args_array) = IS_ARRAY;
+	ALLOC_HASHTABLE(Z_ARRVAL_P(args_array));
+	zend_hash_init(Z_ARRVAL_P(args_array), argc, NULL, NULL, 0);
 	for (i = 0; i < argc; i++) {
-		zval *element = *args[i];
-		zval_copy_ctor(element);
-		add_next_index_zval(args_array, element);
+		add_next_index_zval(args_array, *args[i]);
 	}
 
 	/* serialize php array */
@@ -187,32 +187,33 @@ PHP_FUNCTION(memoize_call)
 	time_t t;
 	apc_context_t ctxt = {0,};
 	size_t key_len;
-	zend_execute_data *ex = EG(current_execute_data);
 
 	/* retrieve function name from entry */
-	fname = ex->function_state.function->common.function_name;
+	fname = estrdup(EG(current_execute_data)->function_state.function->common.function_name);
 
 	/* get parameters */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "*", &args, &argc) == FAILURE) {
+		efree(fname);
 		RETURN_FALSE;
 	}
-
-	/* construct hash key from memoize.fname.serialize(args) */
-	memoize_arguments_hash(argc, args, hash TSRMLS_CC);
-	key_len = spprintf(&key, 0, "%s%s%s", MEMOIZE_KEY_PREFIX, fname, hash);
 
 	/* create apc pool */
 	ctxt.pool = apc_pool_create(APC_UNPOOL, apc_php_malloc, apc_php_free, NULL, NULL TSRMLS_CC);
 	if (!ctxt.pool) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to alocate memory for APC pool.");
+		efree(fname);
 		efree(key);
-		if (args) {
+		if (argc) {
 			efree(args);
 		}
 		RETURN_FALSE;
 	}
 	ctxt.copy = APC_COPY_OUT_USER;
 	ctxt.force_update = 0;
+
+	/* construct hash key from memoize.fname.serialize(args) */
+	memoize_arguments_hash(argc, args, hash TSRMLS_CC);
+	key_len = spprintf(&key, 0, "%s%s%s", MEMOIZE_KEY_PREFIX, fname, hash);
 
 	/* look up key in apc */
 	t = apc_time();
@@ -234,7 +235,7 @@ PHP_FUNCTION(memoize_call)
 		if (EG(scope)) {
 			/* static method */
 			array_init_size(callable, 2);
-			add_next_index_stringl(callable, EG(scope)->name, strlen(EG(scope)->name), 0);
+			add_next_index_stringl(callable, EG(scope)->name, strlen(EG(scope)->name), 1);
 			add_next_index_stringl(callable, new_fname, new_fname_len, 0);
 		} else {
 			/* function */
@@ -250,13 +251,14 @@ PHP_FUNCTION(memoize_call)
 			/* store result in apc */
 			_apc_store(key, key_len, return_copy, 0, 0 TSRMLS_CC);
 		}
+		zval_ptr_dtor(&callable);
 
 		COPY_PZVAL_TO_ZVAL(*return_value, return_copy);
-		efree(new_fname);
 	}
 
+	efree(fname);
 	efree(key);
-	if (args) {
+	if (argc) {
 		efree(args);
 	}
 }
@@ -278,14 +280,14 @@ PHP_FUNCTION(memoize)
 	}
 
 	if (Z_TYPE_P(fci.function_name) == IS_ARRAY) {
-		HashTable *callable = Z_ARRVAL_P(fci.function_name);
 		zval **fname_zv;
+		HashTable *callable = Z_ARRVAL_P(fci.function_name);
 		if (zend_hash_index_find(callable, 1, (void **)&fname_zv) == FAILURE) {
 			/* should be impossible, array callables always have this index */
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "malformed callback");
 			return;
 		}
-		fname = estrdup(Z_STRVAL_PP(fname_zv));
+		fname = Z_STRVAL_PP(fname_zv);
 		fname_len = Z_STRLEN_PP(fname_zv);
 	} else {
 		fname = Z_STRVAL_P(fci.function_name);
@@ -332,10 +334,9 @@ PHP_FUNCTION(memoize)
 
 	/* copy dest entry with source name */
 	dfunc = *dfe;
-	function_add_ref(&dfunc);
 	dfunc.common.scope = fe->common.scope;
 	dfunc.common.fn_flags = fe->common.fn_flags;
-	dfunc.common.function_name = fname;
+	dfunc.common.function_name = fe->common.function_name;
 
 	/* replace source with dest */
 	if (zend_hash_update(fci.function_table, fname, fname_len + 1, &dfunc, sizeof(zend_function), NULL) == FAILURE) {
