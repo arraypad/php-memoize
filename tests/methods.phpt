@@ -2,6 +2,10 @@
 memoize - methods
 --SKIPIF--
 <?php include('skipif.inc'); ?>
+--INI--
+apc.enabled=1
+apc.enable_cli=1
+apc.file_update_protection=0
 --FILE--
 <?php
 
@@ -16,7 +20,7 @@ function test_func($f) {
 /* user class */
 
 class Foo {
-  function expensive_method($s, $t = "foo") {
+  static function expensive_method($s, $t = "foo") {
     echo "expensive_method() called\n";
     return $s . $t;
   }
@@ -41,6 +45,9 @@ test_func($cb, 'j-M-Y', '15-Feb-2009');
 test_func($cb, 'j-M-Y', '15-Feb-2009');
 test_func($cb, 'j-M-Y', '01-Apr-1945');
 test_func($cb, 'j-M-Y', '01-Apr-1945');
+?>
+===DONE===
+<?php exit(0); ?>
 --EXPECTF--
 expensive_method() called
 Array() returned 'haifoo' in %fs
@@ -68,4 +75,4 @@ Array() returned DateTime::__set_state(array(
    'timezone_type' => 3,
    'timezone' => 'Europe/London',
 )) in %fs
-
+===DONE===

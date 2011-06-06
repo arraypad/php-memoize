@@ -2,6 +2,10 @@
 memoize - functions
 --SKIPIF--
 <?php include('skipif.inc'); ?>
+--INI--
+apc.enabled=1
+apc.enable_cli=1
+apc.file_update_protection=0
 --FILE--
 <?php
 
@@ -44,6 +48,9 @@ test_func('sqrt', 65536);
 test_func('sqrt', 65536);
 test_func('sqrt', 64);
 test_func('sqrt', 64);
+?>
+===DONE===
+<?php exit(0); ?>
 --EXPECTF--
 expensive_func() called
 expensive_func() returned 'haifoo' in %fs
@@ -58,3 +65,4 @@ sqrt() returned 256 in %fs
 sqrt() returned 256 in %fs
 sqrt() returned 8 in %fs
 sqrt() returned 8 in %fs
+===DONE===
