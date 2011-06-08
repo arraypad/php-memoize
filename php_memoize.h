@@ -37,13 +37,16 @@ extern zend_module_entry memoize_module_entry;
 #endif
 
 PHP_MINIT_FUNCTION(memoize);
+PHP_MSHUTDOWN_FUNCTION(memoize);
 PHP_RSHUTDOWN_FUNCTION(memoize);
 PHP_MINFO_FUNCTION(memoize);
+ZEND_MODULE_POST_ZEND_DEACTIVATE_D(memoize);
 
 PHP_FUNCTION(memoize);
 PHP_FUNCTION(memoize_call);
 
 int memoize_fix_internal_functions(zend_internal_function *fe TSRMLS_DC);
+int memoize_remove_handler_functions(zend_function *fe TSRMLS_DC);
 
 #define MEMOIZE_KEY_PREFIX "_memoizd"
 #define MEMOIZE_FUNC_SUFFIX "$memoizd"

@@ -54,14 +54,14 @@ zend_module_entry memoize_module_entry = {
 	"memoize",
 	memoize_functions,
 	PHP_MINIT(memoize),
-	NULL,
+	PHP_MSHUTDOWN(memoize),
 	NULL,
 	PHP_RSHUTDOWN(memoize),
 	PHP_MINFO(memoize),
-#if ZEND_MODULE_API_NO >= 20010901
 	"0.1",
-#endif
-	STANDARD_MODULE_PROPERTIES
+	NO_MODULE_GLOBALS,
+	ZEND_MODULE_POST_ZEND_DEACTIVATE_N(memoize),
+	STANDARD_MODULE_PROPERTIES_EX
 };
 /* }}} */
 
@@ -88,6 +88,25 @@ static void php_memoize_shutdown_globals(zend_memoize_globals* memoize_globals T
 PHP_MINIT_FUNCTION(memoize)
 {
 	ZEND_INIT_MODULE_GLOBALS(memoize, php_memoize_init_globals, php_memoize_shutdown_globals);
+	return SUCCESS;
+}
+/* }}} */
+
+/* {{{ PHP_MSHUTDOWN_FUNCTION
+ */
+PHP_MSHUTDOWN_FUNCTION(memoize)
+{
+	return SUCCESS;
+}
+/* }}} */
+
+/* {{{ ZEND_MODULE_POST_ZEND_DEACTIVATE
+ */
+ZEND_MODULE_POST_ZEND_DEACTIVATE_D(memoize)
+{
+	TSRMLS_FETCH();
+	zend_hash_apply(EG(function_table), (apply_func_t) memoize_remove_handler_functions TSRMLS_CC);
+
 	return SUCCESS;
 }
 /* }}} */
@@ -132,6 +151,18 @@ int memoize_fix_internal_functions(zend_internal_function *fe TSRMLS_DC)
 	zend_hash_update(EG(function_table), fe->function_name, strlen(fe->function_name), (void*)fe, sizeof(zend_function), NULL);
 
 	return ZEND_HASH_APPLY_REMOVE;
+}
+/* }}} */
+
+/* {{{ memoize_remove_handler_functions
+	Try to clean up before zend mm  */
+int memoize_remove_handler_functions(zend_function *fe TSRMLS_DC)
+{
+	if (fe->type == ZEND_INTERNAL_FUNCTION && fe->internal_function.handler == &ZEND_FN(memoize_call)) {
+		return ZEND_HASH_APPLY_REMOVE;
+	}
+
+	return ZEND_HASH_APPLY_KEEP;
 }
 /* }}} */
 
@@ -273,7 +304,7 @@ PHP_FUNCTION(memoize)
 	char *fname = NULL, *new_fname = NULL;
 	int fname_len;
 	size_t new_fname_len;
-	zend_function *fe, *dfe, func, dfunc;
+	zend_function *fe, *dfe, func, *new_dfe;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "f", &fci, &fci_cache) == FAILURE) {
 		return;
@@ -306,44 +337,46 @@ PHP_FUNCTION(memoize)
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() not found", fname);
 		RETURN_FALSE;
 	}
+	func = *fe;
+	function_add_ref(&func);
 
 	/* find dest function */
 	if (zend_hash_find(EG(function_table), "memoize_call", strlen("memoize_call") + 1, (void**)&dfe) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "memoize_call() not found");
 		RETURN_FALSE;
 	}
-
-	/* rename source */
-	func = *fe;
-	if (fe->type == ZEND_INTERNAL_FUNCTION) {
-		if (!MEMOIZE_G(internal_functions)) {
-			ALLOC_HASHTABLE(MEMOIZE_G(internal_functions));
-			zend_hash_init(MEMOIZE_G(internal_functions), 4, NULL, NULL, 0);
-		}
-		zend_hash_add(MEMOIZE_G(internal_functions), fname, fname_len + 1, (void*)fe, sizeof(zend_function), NULL);
-	}
-	new_fname_len = spprintf(&new_fname, 0, "%s%s", fname, MEMOIZE_FUNC_SUFFIX);
-	if (zend_hash_add(fci.function_table, new_fname, new_fname_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error renaming %s()", fname);
-		efree(new_fname);
-		zend_function_dtor(fe);
-		RETURN_FALSE;
-	}
-	function_add_ref(&func);
-	efree(new_fname);
-
+	
 	/* copy dest entry with source name */
-	dfunc = *dfe;
-	dfunc.common.scope = fe->common.scope;
-	dfunc.common.fn_flags = fe->common.fn_flags;
-	dfunc.common.function_name = fe->common.function_name;
+	new_dfe = emalloc(sizeof(zend_function));
+	memcpy(new_dfe, dfe, sizeof(zend_function));
+	new_dfe->common.scope = fe->common.scope;
+	new_dfe->common.fn_flags = fe->common.fn_flags;
+	new_dfe->common.function_name = estrdup(fe->common.function_name);
 
 	/* replace source with dest */
-	if (zend_hash_update(fci.function_table, fname, fname_len + 1, &dfunc, sizeof(zend_function), NULL) == FAILURE) {
+	if (zend_hash_update(fci.function_table, fname, fname_len + 1, new_dfe, sizeof(zend_function), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error replacing %s()", fname);
 		zend_function_dtor(&func);
 		RETURN_FALSE;
 	}
+
+	/* rename source */
+	if (func.type == ZEND_INTERNAL_FUNCTION) {
+		if (!MEMOIZE_G(internal_functions)) {
+			ALLOC_HASHTABLE(MEMOIZE_G(internal_functions));
+			zend_hash_init(MEMOIZE_G(internal_functions), 4, NULL, NULL, 0);
+		}
+		zend_hash_add(MEMOIZE_G(internal_functions), fname, fname_len + 1, (void*)&func, sizeof(zend_function), NULL);
+	}
+
+	new_fname_len = spprintf(&new_fname, 0, "%s%s", fname, MEMOIZE_FUNC_SUFFIX);
+	if (zend_hash_add(fci.function_table, new_fname, new_fname_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error renaming %s()", fname);
+		efree(new_fname);
+		zend_function_dtor(&func);
+		RETURN_FALSE;
+	}
+	efree(new_fname);
 
 	RETURN_TRUE;
 }
