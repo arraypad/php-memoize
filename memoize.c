@@ -183,17 +183,16 @@ void memoize_arguments_hash(int argc, zval ***args, zval **object, char *hash TS
 	}
 
 	/* construct php array from args */
-	ALLOC_ZVAL(args_array);
-	INIT_PZVAL(args_array);
-	Z_TYPE_P(args_array) = IS_ARRAY;
-	ALLOC_HASHTABLE(Z_ARRVAL_P(args_array));
-	zend_hash_init(Z_ARRVAL_P(args_array), argc + (object != NULL), NULL, NULL, 0);
+	MAKE_STD_ZVAL(args_array);
+	array_init_size(args_array, argc + (object != NULL));
 	if (object) {
 		Z_ADDREF_PP(object);
 		add_next_index_zval(args_array, *object);
 	}
 	for (i = 0; i < argc; i++) {
-		add_next_index_zval(args_array, *args[i]);
+		zval **arg_pp = args[i];
+		Z_ADDREF_PP(arg_pp);
+		add_next_index_zval(args_array, *arg_pp);
 	}
 
 	/* serialize php array */
@@ -201,10 +200,6 @@ void memoize_arguments_hash(int argc, zval ***args, zval **object, char *hash TS
 	php_var_serialize(&args_str, &args_array, &args_data TSRMLS_CC);
 	PHP_VAR_SERIALIZE_DESTROY(args_data);
 	zval_ptr_dtor(&args_array);
-
-	if (object) {
-		Z_DELREF_PP(object);
-	}
 
 	/* hash serialized string */
 	unsigned char raw_hash[16];
