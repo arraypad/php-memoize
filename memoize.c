@@ -127,24 +127,20 @@ PHP_MINFO_FUNCTION(memoize)
 
 /* {{{ memoize_fix_internal_functions
 	Restores renamed internal functions */
-int memoize_fix_internal_functions(zend_internal_function *fe TSRMLS_DC)
+int memoize_fix_internal_functions(memoize_internal_function *mem_func TSRMLS_DC)
 {
-	char *new_fname = NULL;
-	zend_internal_function *hfe;
+	zend_internal_function *hfe, *fe = (zend_internal_function*)&mem_func->function;
+	char *new_fname = NULL, *fname = zend_str_tolower_dup(fe->function_name, strlen(fe->function_name));
 
 	/* remove renamed function */
-	spprintf(&new_fname, 0, "%s%s", fe->function_name, MEMOIZE_FUNC_SUFFIX);
-	zend_hash_del(EG(function_table), new_fname, strlen(new_fname) + 1);
+	spprintf(&new_fname, 0, "%s%s", fname, MEMOIZE_FUNC_SUFFIX);
+	zend_hash_del(mem_func->function_table, new_fname, strlen(new_fname) + 1);
 	efree(new_fname);
 
-	/* free name from handler */
-	if (zend_hash_find(EG(function_table), fe->function_name, strlen(fe->function_name) + 1, (void**)&hfe) == SUCCESS) {
-		efree(hfe->function_name);
-	}
-
 	/* restore original function */
-	zend_hash_update(EG(function_table), fe->function_name, strlen(fe->function_name) + 1, (void*)fe, sizeof(zend_function), NULL);
+	zend_hash_update(mem_func->function_table, fname, strlen(fname) + 1, (void*)fe, sizeof(zend_function), NULL);
 
+	efree(fname);
 	return ZEND_HASH_APPLY_REMOVE;
 }
 /* }}} */
@@ -154,7 +150,6 @@ int memoize_fix_internal_functions(zend_internal_function *fe TSRMLS_DC)
 int memoize_remove_handler_functions(zend_function *fe TSRMLS_DC)
 {
 	if (fe->type == ZEND_INTERNAL_FUNCTION && fe->internal_function.handler == &ZEND_FN(memoize_call) && !strstr(fe->common.function_name, "memoize_call")) {
-		efree(fe->common.function_name);
 		return ZEND_HASH_APPLY_REMOVE;
 	}
 
@@ -347,7 +342,7 @@ PHP_FUNCTION(memoize)
 	memcpy(new_dfe, dfe, sizeof(zend_function));
 	new_dfe->common.scope = fe->common.scope;
 	new_dfe->common.fn_flags = fe->common.fn_flags;
-	new_dfe->common.function_name = estrdup(fe->common.function_name);
+	new_dfe->common.function_name = fe->common.function_name;
 
 	/* replace source with dest */
 	if (zend_hash_update(fci.function_table, fname, fname_len + 1, new_dfe, sizeof(zend_function), NULL) == FAILURE) {
@@ -364,7 +359,11 @@ PHP_FUNCTION(memoize)
 			ALLOC_HASHTABLE(MEMOIZE_G(internal_functions));
 			zend_hash_init(MEMOIZE_G(internal_functions), 4, NULL, NULL, 0);
 		}
-		zend_hash_add(MEMOIZE_G(internal_functions), fname, fname_len + 1, (void*)&func, sizeof(zend_function), NULL);
+
+		memoize_internal_function mem_func;
+		mem_func.function = func;
+		mem_func.function_table = fci.function_table;
+		zend_hash_add(MEMOIZE_G(internal_functions), fname, fname_len + 1, (void*)&mem_func, sizeof(memoize_internal_function), NULL);
 	}
 
 	new_fname_len = spprintf(&new_fname, 0, "%s%s", fname, MEMOIZE_FUNC_SUFFIX);

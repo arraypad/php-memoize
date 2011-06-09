@@ -44,7 +44,12 @@ PHP_MINFO_FUNCTION(memoize);
 PHP_FUNCTION(memoize);
 PHP_FUNCTION(memoize_call);
 
-int memoize_fix_internal_functions(zend_internal_function *fe TSRMLS_DC);
+typedef struct {
+	HashTable *function_table;
+	zend_function function;
+} memoize_internal_function;
+
+int memoize_fix_internal_functions(memoize_internal_function *fe TSRMLS_DC);
 int memoize_remove_handler_functions(zend_function *fe TSRMLS_DC);
 
 #define MEMOIZE_KEY_PREFIX "_memoizd"
