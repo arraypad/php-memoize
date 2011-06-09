@@ -59,9 +59,7 @@ zend_module_entry memoize_module_entry = {
 	PHP_RSHUTDOWN(memoize),
 	PHP_MINFO(memoize),
 	"0.1",
-	NO_MODULE_GLOBALS,
-	ZEND_MODULE_POST_ZEND_DEACTIVATE_N(memoize),
-	STANDARD_MODULE_PROPERTIES_EX
+	STANDARD_MODULE_PROPERTIES
 };
 /* }}} */
 
@@ -100,17 +98,6 @@ PHP_MSHUTDOWN_FUNCTION(memoize)
 }
 /* }}} */
 
-/* {{{ ZEND_MODULE_POST_ZEND_DEACTIVATE
- */
-ZEND_MODULE_POST_ZEND_DEACTIVATE_D(memoize)
-{
-	TSRMLS_FETCH();
-	zend_hash_apply(EG(function_table), (apply_func_t) memoize_remove_handler_functions TSRMLS_CC);
-
-	return SUCCESS;
-}
-/* }}} */
-
 /* {{{ PHP_RSHUTDOWN_FUNCTION
  */
 PHP_RSHUTDOWN_FUNCTION(memoize)
@@ -121,6 +108,8 @@ PHP_RSHUTDOWN_FUNCTION(memoize)
 		FREE_HASHTABLE(MEMOIZE_G(internal_functions));
 		MEMOIZE_G(internal_functions) = NULL;
 	}
+
+	zend_hash_apply(EG(function_table), (apply_func_t) memoize_remove_handler_functions TSRMLS_CC);
 
 	return SUCCESS;
 }
@@ -158,7 +147,8 @@ int memoize_fix_internal_functions(zend_internal_function *fe TSRMLS_DC)
 	Try to clean up before zend mm  */
 int memoize_remove_handler_functions(zend_function *fe TSRMLS_DC)
 {
-	if (fe->type == ZEND_INTERNAL_FUNCTION && fe->internal_function.handler == &ZEND_FN(memoize_call)) {
+	if (fe->type == ZEND_INTERNAL_FUNCTION && fe->internal_function.handler == &ZEND_FN(memoize_call) && !strstr(fe->common.function_name, "memoize_call")) {
+		efree(fe->common.function_name);
 		return ZEND_HASH_APPLY_REMOVE;
 	}
 
@@ -357,8 +347,10 @@ PHP_FUNCTION(memoize)
 	if (zend_hash_update(fci.function_table, fname, fname_len + 1, new_dfe, sizeof(zend_function), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error replacing %s()", fname);
 		zend_function_dtor(&func);
+		efree(new_dfe);
 		RETURN_FALSE;
 	}
+	efree(new_dfe);
 
 	/* rename source */
 	if (func.type == ZEND_INTERNAL_FUNCTION) {
