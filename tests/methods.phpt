@@ -20,6 +20,8 @@ function test_func($f) {
 /* user class */
 
 class Foo {
+  public $id;
+
   static function expensive_method($s, $t = "foo") {
     echo "expensive_method() called\n";
     return $s . $t;
@@ -27,6 +29,7 @@ class Foo {
 
   function dynamic_method() {
     echo "dynamic_method() called\n";
+    return $this->id;
   }
 }
 
@@ -38,9 +41,20 @@ test_func($cb, 'hai');
 test_func($cb, 'hai', 'again');
 test_func($cb, 'hai', 'again');
 
+/* instances */
+
 $foo = new Foo;
+$foo->id = "obj1";
 $cb = array($foo, 'dynamic_method');
+
 memoize($cb);
+
+test_func($cb);
+test_func($cb);
+
+$foo2 = new Foo;
+$foo2->id = "obj2";
+$cb = array($foo2, 'dynamic_method');
 
 test_func($cb);
 test_func($cb);
@@ -66,8 +80,11 @@ expensive_method() called
 Array() returned 'haiagain' in %fs
 Array() returned 'haiagain' in %fs
 dynamic_method() called
-Array() returned NULL in %fs
-Array() returned NULL in %fs
+Array() returned 'obj1' in %fs
+Array() returned 'obj1' in %fs
+dynamic_method() called
+Array() returned 'obj2' in %fs
+Array() returned 'obj2' in %fs
 Array() returned DateTime::__set_state(array(
    'date' => '2009-02-15 %s',
    'timezone_type' => 3,

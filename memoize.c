@@ -171,7 +171,7 @@ int memoize_remove_handler_functions(zend_function *fe TSRMLS_DC)
 
 /* {{{ memoize_arguments_hash
 	Returns an MD5 hash of the given arguments */
-void memoize_arguments_hash(int argc, zval ***args, char *hash TSRMLS_DC)
+void memoize_arguments_hash(int argc, zval ***args, zval *object, char *hash TSRMLS_DC)
 {
 	php_serialize_data_t args_data;
 	smart_str args_str = {0};
@@ -179,7 +179,7 @@ void memoize_arguments_hash(int argc, zval ***args, char *hash TSRMLS_DC)
 	int i;
 	zval *args_array;
 
-	if (argc == 0) {
+	if (argc == 0 && !object) {
 		return;
 	}
 
@@ -188,7 +188,10 @@ void memoize_arguments_hash(int argc, zval ***args, char *hash TSRMLS_DC)
 	INIT_PZVAL(args_array);
 	Z_TYPE_P(args_array) = IS_ARRAY;
 	ALLOC_HASHTABLE(Z_ARRVAL_P(args_array));
-	zend_hash_init(Z_ARRVAL_P(args_array), argc, NULL, NULL, 0);
+	zend_hash_init(Z_ARRVAL_P(args_array), argc + (object != NULL), NULL, NULL, 0);
+	if (object) {
+		add_next_index_zval(args_array, object);
+	}
 	for (i = 0; i < argc; i++) {
 		add_next_index_zval(args_array, *args[i]);
 	}
@@ -255,7 +258,7 @@ PHP_FUNCTION(memoize_call)
 	ctxt.force_update = 0;
 
 	/* construct hash key from memoize.fname.serialize(args) */
-	memoize_arguments_hash(argc, args, hash TSRMLS_CC);
+	memoize_arguments_hash(argc, args, EG(current_execute_data)->object, hash TSRMLS_CC);
 	key_len = spprintf(&key, 0, "%s%s%s%s", MEMOIZE_KEY_PREFIX, MEMOIZE_G(cache_namespace), fname, hash);
 
 	/* look up key in apc */
