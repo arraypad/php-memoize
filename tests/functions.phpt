@@ -61,6 +61,8 @@ memoize('function_returns_ref');
 var_dump(memoize('memoize'));
 
 var_dump(memoize_call());
+
+var_dump(memoize('expensive_func'));
 ?>
 ===DONE===
 <?php exit(0); ?>
@@ -85,5 +87,8 @@ Warning: memoize(): Cannot memoize memoize()! in %s on line %d
 bool(false)
 
 Warning: memoize_call(): Cannot call memoize_call() directly in %s on line %d
+bool(false)
+
+Warning: memoize(): expensive_func() is already memoized in %s on line %d
 bool(false)
 ===DONE===

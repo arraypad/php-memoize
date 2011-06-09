@@ -156,12 +156,16 @@ int memoize_fix_internal_functions(memoize_internal_function *mem_func TSRMLS_DC
 	return ZEND_HASH_APPLY_REMOVE;
 }
 /* }}} */
+	
+#define MEMOIZE_IS_HANDLER(fe)	(fe->type == ZEND_INTERNAL_FUNCTION && \
+		fe->internal_function.handler == &ZEND_FN(memoize_call) && \
+		!strstr(fe->common.function_name, "memoize_call"))
 
 /* {{{ memoize_remove_handler_functions
 	Try to clean up before zend mm  */
 int memoize_remove_handler_functions(zend_function *fe TSRMLS_DC)
 {
-	if (fe->type == ZEND_INTERNAL_FUNCTION && fe->internal_function.handler == &ZEND_FN(memoize_call) && !strstr(fe->common.function_name, "memoize_call")) {
+	if (MEMOIZE_IS_HANDLER(fe)) {
 		return ZEND_HASH_APPLY_REMOVE;
 	}
 
@@ -230,18 +234,17 @@ PHP_FUNCTION(memoize_call)
 		RETURN_FALSE;
 	}
 
-	/* retrieve function name from entry */
 	fe = EG(current_execute_data)->function_state.function;
-	fname = estrdup(fe->common.function_name);
 
-	if (strlen(fname) == strlen("memoize_call") && !memcmp(fname, "memoize_call", strlen(fname))) {
+	if (strlen(fe->common.function_name) == strlen("memoize_call") && !memcmp(fe->common.function_name, "memoize_call", strlen("memoize_call"))) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot call memoize_call() directly");
-		efree(fname);
 		if (argc) {
 			efree(args);
 		}
 		RETURN_FALSE;
 	}
+
+	fname = estrdup(fe->common.function_name);
 
 	/* create apc pool */
 	ctxt.pool = apc_pool_create(APC_UNPOOL, apc_php_malloc, apc_php_free, NULL, NULL TSRMLS_CC);
@@ -363,6 +366,12 @@ PHP_FUNCTION(memoize)
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() not found", fname);
 		RETURN_FALSE;
 	}
+
+	if (MEMOIZE_IS_HANDLER(fe)) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() is already memoized", fe->common.function_name);
+		RETURN_FALSE;
+	}
+
 
 	if (fe->common.return_reference) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot cache functions which return references");
