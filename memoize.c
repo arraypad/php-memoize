@@ -259,14 +259,19 @@ PHP_FUNCTION(memoize_call)
 		apc_pool_destroy(ctxt.pool TSRMLS_CC);
 
 		/* create callable for original function */
-		char *new_fname = NULL;
+		char *new_fname = NULL, **obj_pp = NULL;
 		size_t new_fname_len = spprintf(&new_fname, 0, "%s%s", fname, MEMOIZE_FUNC_SUFFIX);
 		zval *callable;
 		MAKE_STD_ZVAL(callable);
 		if (fe->common.scope) {
 			/* static method */
 			array_init_size(callable, 2);
-			add_next_index_stringl(callable, fe->common.scope->name, strlen(fe->common.scope->name), 1);
+			if (EG(current_execute_data)->object) {
+				obj_pp = &EG(current_execute_data)->object;
+				add_next_index_zval(callable, *obj_pp);
+			} else {
+				add_next_index_stringl(callable, fe->common.scope->name, strlen(fe->common.scope->name), 1);
+			}
 			add_next_index_stringl(callable, new_fname, new_fname_len, 0);
 		} else {
 			/* function */
@@ -276,7 +281,7 @@ PHP_FUNCTION(memoize_call)
 		/* call original function */
 		zval *return_copy;
 		MAKE_STD_ZVAL(return_copy);
-		if (call_user_function(&fe->common.scope->function_table, NULL, callable, return_copy, argc, (argc ? *args : NULL) TSRMLS_CC) == FAILURE) {
+		if (call_user_function(&fe->common.scope->function_table, obj_pp, callable, return_copy, argc, (argc ? *args : NULL) TSRMLS_CC) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to call memoized function %s.", fname);
 		} else {
 			/* store result in apc */

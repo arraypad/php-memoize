@@ -8,7 +8,7 @@ apc.enable_cli=1
 apc.file_update_protection=0
 --FILE--
 <?php
-
+error_reporting(E_ALL|E_STRICT);
 function test_func($f) {
   $args = func_get_args();
   $f = array_shift($args);
@@ -24,6 +24,10 @@ class Foo {
     echo "expensive_method() called\n";
     return $s . $t;
   }
+
+  function dynamic_method() {
+    echo "dynamic_method() called\n";
+  }
 }
 
 $cb = array('Foo', 'expensive_method');
@@ -34,6 +38,12 @@ test_func($cb, 'hai');
 test_func($cb, 'hai', 'again');
 test_func($cb, 'hai', 'again');
 
+$foo = new Foo;
+$cb = array($foo, 'dynamic_method');
+memoize($cb);
+
+test_func($cb);
+test_func($cb);
 
 /* internal class */
 
@@ -55,6 +65,9 @@ Array() returned 'haifoo' in %fs
 expensive_method() called
 Array() returned 'haiagain' in %fs
 Array() returned 'haiagain' in %fs
+dynamic_method() called
+Array() returned NULL in %fs
+Array() returned NULL in %fs
 Array() returned DateTime::__set_state(array(
    'date' => '2009-02-15 %s',
    'timezone_type' => 3,
