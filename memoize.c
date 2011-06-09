@@ -210,7 +210,6 @@ PHP_FUNCTION(memoize_call)
 	apc_context_t ctxt = {0,};
 	size_t key_len;
 
-	/* get parameters */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "*", &args, &argc) == FAILURE) {
 		RETURN_FALSE;
 	}
