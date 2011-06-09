@@ -45,6 +45,15 @@ const zend_function_entry memoize_functions[] = {
 };
 /* }}} */
 
+/* {{{ PHP_GINIT_FUNCTION(memoize) */
+ZEND_DECLARE_MODULE_GLOBALS(memoize);
+static PHP_GINIT_FUNCTION(memoize)
+{
+	memoize_globals->internal_functions = NULL;
+	memoize_globals->cache_namespace = NULL;
+}
+/* }}} */
+
 /* {{{ memoize_module_entry
  */
 zend_module_entry memoize_module_entry = {
@@ -59,7 +68,11 @@ zend_module_entry memoize_module_entry = {
 	PHP_RSHUTDOWN(memoize),
 	PHP_MINFO(memoize),
 	"0.1",
-	STANDARD_MODULE_PROPERTIES
+	PHP_MODULE_GLOBALS(memoize),
+	PHP_GINIT(memoize),
+	NULL,
+	NULL,
+	STANDARD_MODULE_PROPERTIES_EX
 };
 /* }}} */
 
@@ -74,28 +87,10 @@ PHP_INI_BEGIN()
 PHP_INI_END()
 /* }}} */
 
-/* {{{ ZEND_DECLARE_MODULE_GLOBALS(memoize) */
-ZEND_DECLARE_MODULE_GLOBALS(memoize)
-
-static void php_memoize_init_globals(zend_memoize_globals* memoize_globals TSRMLS_DC)
-{
-	memoize_globals->internal_functions = NULL;
-	memoize_globals->cache_namespace = NULL;
-}
-
-static void php_memoize_shutdown_globals(zend_memoize_globals* memoize_globals TSRMLS_DC)
-{
-	/* internal_function done in rshutdown */
-
-	memoize_globals->cache_namespace = NULL;
-}
-/* }}} */
-
 /* {{{ PHP_MINIT_FUNCTION
  */
 PHP_MINIT_FUNCTION(memoize)
 {
-	ZEND_INIT_MODULE_GLOBALS(memoize, php_memoize_init_globals, php_memoize_shutdown_globals);
 	REGISTER_INI_ENTRIES();
 	return SUCCESS;
 }
