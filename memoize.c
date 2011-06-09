@@ -129,7 +129,7 @@ PHP_MINFO_FUNCTION(memoize)
 	Restores renamed internal functions */
 int memoize_fix_internal_functions(memoize_internal_function *mem_func TSRMLS_DC)
 {
-	zend_internal_function *hfe, *fe = (zend_internal_function*)&mem_func->function;
+	zend_internal_function *fe = (zend_internal_function*)&mem_func->function;
 	char *new_fname = NULL, *fname = zend_str_tolower_dup(fe->function_name, strlen(fe->function_name));
 
 	/* remove renamed function */
@@ -210,14 +210,13 @@ PHP_FUNCTION(memoize_call)
 	apc_context_t ctxt = {0,};
 	size_t key_len;
 
-	/* retrieve function name from entry */
-	fname = estrdup(EG(current_execute_data)->function_state.function->common.function_name);
-
 	/* get parameters */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "*", &args, &argc) == FAILURE) {
-		efree(fname);
 		RETURN_FALSE;
 	}
+
+	/* retrieve function name from entry */
+	fname = estrdup(EG(current_execute_data)->function_state.function->common.function_name);
 
 	/* create apc pool */
 	ctxt.pool = apc_pool_create(APC_UNPOOL, apc_php_malloc, apc_php_free, NULL, NULL TSRMLS_CC);
