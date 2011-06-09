@@ -56,6 +56,11 @@ function &function_returns_ref() {
 }
 
 memoize('function_returns_ref');
+
+/* sanity checks */
+var_dump(memoize('memoize'));
+
+var_dump(memoize_call());
 ?>
 ===DONE===
 <?php exit(0); ?>
@@ -75,4 +80,10 @@ sqrt() returned 8 in %fs
 sqrt() returned 8 in %fs
 
 Warning: memoize(): Cannot cache functions which return references in %s on line %d
+
+Warning: memoize(): Cannot memoize memoize()! in %s on line %d
+bool(false)
+
+Warning: memoize_call(): Cannot call memoize_call() directly in %s on line %d
+bool(false)
 ===DONE===

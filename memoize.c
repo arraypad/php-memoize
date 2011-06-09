@@ -217,10 +217,19 @@ PHP_FUNCTION(memoize_call)
 	/* retrieve function name from entry */
 	fname = estrdup(EG(current_execute_data)->function_state.function->common.function_name);
 
+	if (strlen(fname) == strlen("memoize_call") && !memcmp(fname, "memoize_call", strlen(fname))) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot call memoize_call() directly");
+		efree(fname);
+		if (argc) {
+			efree(args);
+		}
+		RETURN_FALSE;
+	}
+
 	/* create apc pool */
 	ctxt.pool = apc_pool_create(APC_UNPOOL, apc_php_malloc, apc_php_free, NULL, NULL TSRMLS_CC);
 	if (!ctxt.pool) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to alocate memory for APC pool.");
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to allocate memory for APC pool.");
 		efree(fname);
 		efree(key);
 		if (argc) {
@@ -299,6 +308,11 @@ PHP_FUNCTION(memoize)
 		return;
 	}
 
+	if (!APCG(enabled)) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "APC cache is disabled");
+		RETURN_FALSE;
+	}
+
 	if (Z_TYPE_P(fci.function_name) == IS_ARRAY) {
 		zval **fname_zv;
 		HashTable *callable = Z_ARRVAL_P(fci.function_name);
@@ -312,11 +326,11 @@ PHP_FUNCTION(memoize)
 	} else {
 		fname = Z_STRVAL_P(fci.function_name);
 		fname_len = Z_STRLEN_P(fci.function_name);
-	}
 
-	if (!APCG(enabled)) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "APC cache is disabled");
-		RETURN_FALSE;
+		if (fname_len == strlen("memoize") && !memcmp(fname, "memoize", fname_len)) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot memoize memoize()!", fname);
+			RETURN_FALSE;
+		}
 	}
 
 	php_strtolower(fname, fname_len);
