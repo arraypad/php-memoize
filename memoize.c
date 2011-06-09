@@ -209,13 +209,15 @@ PHP_FUNCTION(memoize_call)
 	time_t t;
 	apc_context_t ctxt = {0,};
 	size_t key_len;
+	zend_function *fe;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "*", &args, &argc) == FAILURE) {
 		RETURN_FALSE;
 	}
 
 	/* retrieve function name from entry */
-	fname = estrdup(EG(current_execute_data)->function_state.function->common.function_name);
+	fe = EG(current_execute_data)->function_state.function;
+	fname = estrdup(fe->common.function_name);
 
 	if (strlen(fname) == strlen("memoize_call") && !memcmp(fname, "memoize_call", strlen(fname))) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot call memoize_call() directly");
@@ -261,10 +263,10 @@ PHP_FUNCTION(memoize_call)
 		size_t new_fname_len = spprintf(&new_fname, 0, "%s%s", fname, MEMOIZE_FUNC_SUFFIX);
 		zval *callable;
 		MAKE_STD_ZVAL(callable);
-		if (EG(scope)) {
+		if (fe->common.scope) {
 			/* static method */
 			array_init_size(callable, 2);
-			add_next_index_stringl(callable, EG(scope)->name, strlen(EG(scope)->name), 1);
+			add_next_index_stringl(callable, fe->common.scope->name, strlen(fe->common.scope->name), 1);
 			add_next_index_stringl(callable, new_fname, new_fname_len, 0);
 		} else {
 			/* function */
@@ -274,7 +276,7 @@ PHP_FUNCTION(memoize_call)
 		/* call original function */
 		zval *return_copy;
 		MAKE_STD_ZVAL(return_copy);
-		if (call_user_function(&EG(scope)->function_table, NULL, callable, return_copy, argc, (argc ? *args : NULL) TSRMLS_CC) == FAILURE) {
+		if (call_user_function(&fe->common.scope->function_table, NULL, callable, return_copy, argc, (argc ? *args : NULL) TSRMLS_CC) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to call memoized function %s.", fname);
 		} else {
 			/* store result in apc */
