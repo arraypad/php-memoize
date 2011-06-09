@@ -21,6 +21,8 @@
 #ifndef PHP_MEMOIZE_H
 #define PHP_MEMOIZE_H
 
+#define PHP_MEMOIZE_APC_EXTVER "0.0.1-dev"
+
 extern zend_module_entry memoize_module_entry;
 #define phpext_memoize_ptr &memoize_module_entry
 

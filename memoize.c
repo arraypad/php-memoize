@@ -33,7 +33,6 @@
 #include "ext/apc/apc_zend.h"
 #include "ext/apc/apc_globals.h"
 
-
 /* {{{ memoize_functions[]
  */
 const zend_function_entry memoize_functions[] = {
@@ -65,7 +64,7 @@ zend_module_entry memoize_module_entry = {
 	NULL,
 	PHP_RSHUTDOWN(memoize),
 	PHP_MINFO(memoize),
-	"0.1",
+	PHP_MEMOIZE_EXTVER,
 	PHP_MODULE_GLOBALS(memoize),
 	PHP_GINIT(memoize),
 	NULL,
@@ -126,6 +125,7 @@ PHP_MINFO_FUNCTION(memoize)
 {
 	php_info_print_table_start();
 	php_info_print_table_header(2, "memoize support", "enabled");
+	php_info_print_table_row(2, "memoize version", PHP_MEMOIZE_EXTVER);
 	php_info_print_table_end();
 }
 /* }}} */
