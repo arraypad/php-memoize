@@ -25,26 +25,26 @@ function expensive_func($s, $t = "foo") {
 
 memoize('expensive_func');
 
-/* no namespace */
+echo "*** Testing memoize(): cache_namespace - no namespace\n";
 
 test_func('expensive_func', 'hai', 'again');
 test_func('expensive_func', 'hai', 'again');
 
-/* namespace a */
+echo "*** Testing memoize(): cache_namespace - namespace A\n";
 
 ini_set('memoize.cache_namespace', $currentNamespace = 'namespaceA');
 
 test_func('expensive_func', 'hai', 'again');
 test_func('expensive_func', 'hai', 'again');
 
-/* namespace b */
+echo "*** Testing memoize(): cache_namespace - namespace B\n";
 
 ini_set('memoize.cache_namespace', $currentNamespace = 'namespaceB');
 
 test_func('expensive_func', 'hai', 'again');
 test_func('expensive_func', 'hai', 'again');
 
-/* namespace b */
+echo "*** Testing memoize(): cache_namespace - namespace A again\n";
 
 ini_set('memoize.cache_namespace', $currentNamespace = 'namespaceA');
 
@@ -54,14 +54,18 @@ test_func('expensive_func', 'hai', 'again');
 ===DONE===
 <?php exit(0); ?>
 --EXPECTF--
+*** Testing memoize(): cache_namespace - no namespace
 expensive_func() called
 expensive_func() returned '::haiagain' in %fs
 expensive_func() returned '::haiagain' in %fs
+*** Testing memoize(): cache_namespace - namespace A
 expensive_func() called
 expensive_func() returned 'namespaceA::haiagain' in %fs
 expensive_func() returned 'namespaceA::haiagain' in %fs
+*** Testing memoize(): cache_namespace - namespace B
 expensive_func() called
 expensive_func() returned 'namespaceB::haiagain' in %fs
 expensive_func() returned 'namespaceB::haiagain' in %fs
+*** Testing memoize(): cache_namespace - namespace A again
 expensive_func() returned 'namespaceA::haiagain' in %fs
 ===DONE===

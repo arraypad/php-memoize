@@ -17,7 +17,7 @@ function test_func($f) {
   printf("%s() returned %s in %.5fs\n", join('::', $f), var_export($ret, true), microtime(true) - $t);;
 }
 
-/* user class */
+echo "*** Testing memoize(): methods - user class\n";
 
 class Foo {
   public $id;
@@ -50,7 +50,7 @@ test_func($cb, 'hai');
 test_func($cb, 'hai', 'again');
 test_func($cb, 'hai', 'again');
 
-/* instances */
+echo "*** Testing memoize(): methods - instances\n";
 
 $foo = new Foo;
 $foo->id = "obj1";
@@ -68,7 +68,7 @@ $cb = array($foo2, 'dynamic_method');
 test_func($cb);
 test_func($cb);
 
-/* instance method, memoized on class */
+echo "*** Testing memoize(): methods - instance method, memoized on class\n";
 
 $cb = array('Foo', 'dynamic_method2');
 memoize($cb);
@@ -78,7 +78,7 @@ test_func(array($foo, 'dynamic_method2'));
 test_func(array($foo2, 'dynamic_method2'));
 test_func(array($foo2, 'dynamic_method2'));
 
-/* internal class */
+echo "*** Testing memoize(): methods - internal class\n";
 
 $cb = array('DateTime', 'createFromFormat');
 memoize($cb);
@@ -92,24 +92,28 @@ test_func($cb, 'j-M-Y', '01-Apr-1945');
 ===DONE===
 <?php exit(0); ?>
 --EXPECTF--
+*** Testing memoize(): methods - user class
 expensive_method() called
 Foo::expensive_method() returned 'haifoo' in %fs
 Foo::expensive_method() returned 'haifoo' in %fs
 expensive_method() called
 Foo::expensive_method() returned 'haiagain' in %fs
 Foo::expensive_method() returned 'haiagain' in %fs
+*** Testing memoize(): methods - instances
 dynamic_method() called
 Foo instance[obj1]::dynamic_method() returned 'obj1' in %fs
 Foo instance[obj1]::dynamic_method() returned 'obj1' in %fs
 dynamic_method() called
 Foo instance[obj2]::dynamic_method() returned 'obj2' in %fs
 Foo instance[obj2]::dynamic_method() returned 'obj2' in %fs
+*** Testing memoize(): methods - instance method, memoized on class
 dynamic_method2() called
 Foo instance[obj1]::dynamic_method2() returned 'obj1' in %fs
 Foo instance[obj1]::dynamic_method2() returned 'obj1' in %fs
 dynamic_method2() called
 Foo instance[obj2]::dynamic_method2() returned 'obj2' in %fs
 Foo instance[obj2]::dynamic_method2() returned 'obj2' in %fs
+*** Testing memoize(): methods - internal class
 DateTime::createFromFormat() returned DateTime::__set_state(array(
    'date' => '2009-02-15 %s',
    'timezone_type' => 3,

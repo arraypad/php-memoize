@@ -17,7 +17,7 @@ function test_func($f) {
   printf("%s() returned %s in %.5fs\n", $f, var_export($ret, true), microtime(true) - $t);;
 }
 
-/* user function */
+echo "*** Testing memoize(): functions - user functions\n";
 
 function expensive_func($s, $t = "foo") {
   echo "expensive_func() called\n";
@@ -30,7 +30,7 @@ test_func('expensive_func', 'hai');
 test_func('expensive_func', 'hai', 'again');
 test_func('expensive_func', 'hai', 'again');
 
-/* user function with no args */
+echo "*** Testing memoize(): functions - functions with no args\n";
 
 function expensive_func2() {
   echo "expensive_func2() called\n";
@@ -40,7 +40,7 @@ memoize('expensive_func2');
 test_func('expensive_func2');
 test_func('expensive_func2');
 
-/* internal function */
+echo "*** Testing memoize(): functions - internal functions\n";
 
 memoize('sqrt');
 
@@ -49,7 +49,8 @@ test_func('sqrt', 65536);
 test_func('sqrt', 64);
 test_func('sqrt', 64);
 
-/* return by ref */
+echo "*** Testing memoize(): functions - return by reference\n";
+
 function &function_returns_ref() {
   $foo = "bar";
   return $foo;
@@ -57,7 +58,8 @@ function &function_returns_ref() {
 
 memoize('function_returns_ref');
 
-/* sanity checks */
+echo "*** Testing memoize(): functions - sanity checks\n";
+
 var_dump(memoize('memoize'));
 
 var_dump(memoize_call());
@@ -67,21 +69,26 @@ var_dump(memoize('expensive_func'));
 ===DONE===
 <?php exit(0); ?>
 --EXPECTF--
+*** Testing memoize(): functions - user functions
 expensive_func() called
 expensive_func() returned 'haifoo' in %fs
 expensive_func() returned 'haifoo' in %fs
 expensive_func() called
 expensive_func() returned 'haiagain' in %fs
 expensive_func() returned 'haiagain' in %fs
+*** Testing memoize(): functions - functions with no args
 expensive_func2() called
 expensive_func2() returned NULL in %fs
 expensive_func2() returned NULL in %fs
+*** Testing memoize(): functions - internal functions
 sqrt() returned 256 in %fs
 sqrt() returned 256 in %fs
 sqrt() returned 8 in %fs
 sqrt() returned 8 in %fs
+*** Testing memoize(): functions - return by reference
 
 Warning: memoize(): Cannot cache functions which return references in %s on line %d
+*** Testing memoize(): functions - sanity checks
 
 Warning: memoize(): Cannot memoize memoize()! in %s on line %d
 bool(false)
