@@ -67,17 +67,27 @@ zend_module_entry memoize_module_entry = {
 ZEND_GET_MODULE(memoize)
 #endif
 
+/* {{{ PHP_INI
+ */
+PHP_INI_BEGIN()
+    STD_PHP_INI_ENTRY("memoize.cache_namespace", "", PHP_INI_ALL, OnUpdateString, cache_namespace, zend_memoize_globals, memoize_globals)
+PHP_INI_END()
+/* }}} */
+
 /* {{{ ZEND_DECLARE_MODULE_GLOBALS(memoize) */
 ZEND_DECLARE_MODULE_GLOBALS(memoize)
 
 static void php_memoize_init_globals(zend_memoize_globals* memoize_globals TSRMLS_DC)
 {
 	memoize_globals->internal_functions = NULL;
+	memoize_globals->cache_namespace = NULL;
 }
 
 static void php_memoize_shutdown_globals(zend_memoize_globals* memoize_globals TSRMLS_DC)
 {
-	/* done in rshutdown */
+	/* internal_function done in rshutdown */
+
+	memoize_globals->cache_namespace = NULL;
 }
 /* }}} */
 
@@ -86,6 +96,7 @@ static void php_memoize_shutdown_globals(zend_memoize_globals* memoize_globals T
 PHP_MINIT_FUNCTION(memoize)
 {
 	ZEND_INIT_MODULE_GLOBALS(memoize, php_memoize_init_globals, php_memoize_shutdown_globals);
+	REGISTER_INI_ENTRIES();
 	return SUCCESS;
 }
 /* }}} */
@@ -94,6 +105,7 @@ PHP_MINIT_FUNCTION(memoize)
  */
 PHP_MSHUTDOWN_FUNCTION(memoize)
 {
+	UNREGISTER_INI_ENTRIES();
 	return SUCCESS;
 }
 /* }}} */
@@ -244,7 +256,7 @@ PHP_FUNCTION(memoize_call)
 
 	/* construct hash key from memoize.fname.serialize(args) */
 	memoize_arguments_hash(argc, args, hash TSRMLS_CC);
-	key_len = spprintf(&key, 0, "%s%s%s", MEMOIZE_KEY_PREFIX, fname, hash);
+	key_len = spprintf(&key, 0, "%s%s%s%s", MEMOIZE_KEY_PREFIX, MEMOIZE_G(cache_namespace), fname, hash);
 
 	/* look up key in apc */
 	t = apc_time();
