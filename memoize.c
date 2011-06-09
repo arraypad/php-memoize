@@ -271,7 +271,8 @@ PHP_FUNCTION(memoize_call)
 		apc_pool_destroy(ctxt.pool TSRMLS_CC);
 
 		/* create callable for original function */
-		char *new_fname = NULL, **obj_pp = NULL;
+		char *new_fname = NULL;
+		zval **obj_pp = NULL;
 		size_t new_fname_len = spprintf(&new_fname, 0, "%s%s", fname, MEMOIZE_FUNC_SUFFIX);
 		zval *callable;
 		MAKE_STD_ZVAL(callable);
@@ -347,7 +348,7 @@ PHP_FUNCTION(memoize)
 		fname_len = Z_STRLEN_P(fci.function_name);
 
 		if (fname_len == strlen("memoize") && !memcmp(fname, "memoize", fname_len)) {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot memoize memoize()!", fname);
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot memoize memoize()!");
 			RETURN_FALSE;
 		}
 	}
@@ -361,7 +362,7 @@ PHP_FUNCTION(memoize)
 	}
 
 	if (fe->common.return_reference) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot cache functions which return references", fname);
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot cache functions which return references");
 		RETURN_FALSE;
 	}
 
