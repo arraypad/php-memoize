@@ -14,7 +14,7 @@ function test_func($f) {
   $f = array_shift($args);
   $t = microtime(true);
   $ret = call_user_func_array($f, $args);
-  printf("%s() returned %s in %.5fs\n", $f, var_export($ret, true), microtime(true) - $t);;
+  printf("%s() returned %s in %.5fs\n", join('::', $f), var_export($ret, true), microtime(true) - $t);;
 }
 
 /* user class */
@@ -30,6 +30,10 @@ class Foo {
   function dynamic_method() {
     echo "dynamic_method() called\n";
     return $this->id;
+  }
+
+  function __toString() {
+    return 'Foo instance[' . $this->id . ']';
   }
 }
 
@@ -74,33 +78,33 @@ test_func($cb, 'j-M-Y', '01-Apr-1945');
 <?php exit(0); ?>
 --EXPECTF--
 expensive_method() called
-Array() returned 'haifoo' in %fs
-Array() returned 'haifoo' in %fs
+Foo::expensive_method() returned 'haifoo' in %fs
+Foo::expensive_method() returned 'haifoo' in %fs
 expensive_method() called
-Array() returned 'haiagain' in %fs
-Array() returned 'haiagain' in %fs
+Foo::expensive_method() returned 'haiagain' in %fs
+Foo::expensive_method() returned 'haiagain' in %fs
 dynamic_method() called
-Array() returned 'obj1' in %fs
-Array() returned 'obj1' in %fs
+Foo instance[obj1]::dynamic_method() returned 'obj1' in %fs
+Foo instance[obj1]::dynamic_method() returned 'obj1' in %fs
 dynamic_method() called
-Array() returned 'obj2' in %fs
-Array() returned 'obj2' in %fs
-Array() returned DateTime::__set_state(array(
+Foo instance[obj2]::dynamic_method() returned 'obj2' in %fs
+Foo instance[obj2]::dynamic_method() returned 'obj2' in %fs
+DateTime::createfromformat() returned DateTime::__set_state(array(
    'date' => '2009-02-15 %s',
    'timezone_type' => 3,
    'timezone' => 'Europe/London',
 )) in %fs
-Array() returned DateTime::__set_state(array(
+DateTime::createfromformat() returned DateTime::__set_state(array(
    'date' => '2009-02-15 %s',
    'timezone_type' => 3,
    'timezone' => 'Europe/London',
 )) in %fs
-Array() returned DateTime::__set_state(array(
+DateTime::createfromformat() returned DateTime::__set_state(array(
    'date' => '1945-04-01 %s',
    'timezone_type' => 3,
    'timezone' => 'Europe/London',
 )) in %fs
-Array() returned DateTime::__set_state(array(
+DateTime::createfromformat() returned DateTime::__set_state(array(
    'date' => '1945-04-01 %s',
    'timezone_type' => 3,
    'timezone' => 'Europe/London',
