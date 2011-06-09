@@ -72,12 +72,12 @@ test_func($cb);
 
 $cb = array('Foo', 'dynamic_method2');
 memoize($cb);
-/*
+
 test_func(array($foo, 'dynamic_method2'));
 test_func(array($foo, 'dynamic_method2'));
 test_func(array($foo2, 'dynamic_method2'));
 test_func(array($foo2, 'dynamic_method2'));
-*/
+
 /* internal class */
 
 $cb = array('DateTime', 'createFromFormat');
@@ -110,22 +110,22 @@ Foo instance[obj1]::dynamic_method2() returned 'obj1' in %fs
 dynamic_method2() called
 Foo instance[obj2]::dynamic_method2() returned 'obj2' in %fs
 Foo instance[obj2]::dynamic_method2() returned 'obj2' in %fs
-DateTime::createfromformat() returned DateTime::__set_state(array(
+DateTime::createFromFormat() returned DateTime::__set_state(array(
    'date' => '2009-02-15 %s',
    'timezone_type' => 3,
    'timezone' => 'Europe/London',
 )) in %fs
-DateTime::createfromformat() returned DateTime::__set_state(array(
+DateTime::createFromFormat() returned DateTime::__set_state(array(
    'date' => '2009-02-15 %s',
    'timezone_type' => 3,
    'timezone' => 'Europe/London',
 )) in %fs
-DateTime::createfromformat() returned DateTime::__set_state(array(
+DateTime::createFromFormat() returned DateTime::__set_state(array(
    'date' => '1945-04-01 %s',
    'timezone_type' => 3,
    'timezone' => 'Europe/London',
 )) in %fs
-DateTime::createfromformat() returned DateTime::__set_state(array(
+DateTime::createFromFormat() returned DateTime::__set_state(array(
    'date' => '1945-04-01 %s',
    'timezone_type' => 3,
    'timezone' => 'Europe/London',

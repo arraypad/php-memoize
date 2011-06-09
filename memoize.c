@@ -170,7 +170,7 @@ int memoize_remove_handler_functions(zend_function *fe TSRMLS_DC)
 
 /* {{{ memoize_arguments_hash
 	Returns an MD5 hash of the given arguments */
-void memoize_arguments_hash(int argc, zval ***args, zval *object, char *hash TSRMLS_DC)
+void memoize_arguments_hash(int argc, zval ***args, zval **object, char *hash TSRMLS_DC)
 {
 	php_serialize_data_t args_data;
 	smart_str args_str = {0};
@@ -189,7 +189,8 @@ void memoize_arguments_hash(int argc, zval ***args, zval *object, char *hash TSR
 	ALLOC_HASHTABLE(Z_ARRVAL_P(args_array));
 	zend_hash_init(Z_ARRVAL_P(args_array), argc + (object != NULL), NULL, NULL, 0);
 	if (object) {
-		add_next_index_zval(args_array, object);
+		Z_ADDREF_PP(object);
+		add_next_index_zval(args_array, *object);
 	}
 	for (i = 0; i < argc; i++) {
 		add_next_index_zval(args_array, *args[i]);
@@ -200,6 +201,10 @@ void memoize_arguments_hash(int argc, zval ***args, zval *object, char *hash TSR
 	php_var_serialize(&args_str, &args_array, &args_data TSRMLS_CC);
 	PHP_VAR_SERIALIZE_DESTROY(args_data);
 	zval_ptr_dtor(&args_array);
+
+	if (object) {
+		Z_DELREF_PP(object);
+	}
 
 	/* hash serialized string */
 	unsigned char raw_hash[16];
@@ -256,7 +261,7 @@ PHP_FUNCTION(memoize_call)
 	ctxt.force_update = 0;
 
 	/* construct hash key from memoize.fname.serialize(args) */
-	memoize_arguments_hash(argc, args, EG(current_execute_data)->object, hash TSRMLS_CC);
+	memoize_arguments_hash(argc, args, EG(current_execute_data)->object ? &EG(current_execute_data)->object : NULL, hash TSRMLS_CC);
 	key_len = spprintf(&key, 0, "%s%s%s%s", MEMOIZE_KEY_PREFIX, MEMOIZE_G(cache_namespace), fname, hash);
 
 	/* look up key in apc */
@@ -282,6 +287,7 @@ PHP_FUNCTION(memoize_call)
 			array_init_size(callable, 2);
 			if (EG(current_execute_data)->object) {
 				obj_pp = &EG(current_execute_data)->object;
+				Z_ADDREF_PP(obj_pp);
 				add_next_index_zval(callable, *obj_pp);
 			} else {
 				add_next_index_stringl(callable, fe->common.scope->name, strlen(fe->common.scope->name), 1);
@@ -318,58 +324,91 @@ PHP_FUNCTION(memoize_call)
    Memoizes the given function */
 PHP_FUNCTION(memoize)
 {
-	zend_fcall_info fci;
-	zend_fcall_info_cache fci_cache;
+	zval *callable;
 	char *fname = NULL, *new_fname = NULL;
 	int fname_len;
 	size_t new_fname_len;
 	zend_function *fe, *dfe, func, *new_dfe;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "f", &fci, &fci_cache) == FAILURE) {
-		return;
-	}
+	HashTable *function_table = EG(function_table);
 
 	if (!APCG(enabled)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "APC cache is disabled");
 		RETURN_FALSE;
 	}
 
-	if (Z_TYPE_P(fci.function_name) == IS_ARRAY) {
-		zval **fname_zv;
-		HashTable *callable = Z_ARRVAL_P(fci.function_name);
-		if (zend_hash_index_find(callable, 1, (void **)&fname_zv) == FAILURE) {
-			/* should be impossible, array callables always have this index */
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "malformed callback");
+	/* parse argument */
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &callable) == FAILURE) {
+		return;
+	}
+	
+	if (Z_TYPE_P(callable) == IS_ARRAY) {
+		zval **fname_zv, **obj_zv;
+		if (zend_hash_num_elements(Z_ARRVAL_P(callable)) == 2) {
+			zend_hash_index_find(Z_ARRVAL_P(callable), 0, (void **)&obj_zv);
+			zend_hash_index_find(Z_ARRVAL_P(callable), 1, (void **)&fname_zv);
+		}
+
+		if (obj_zv && fname_zv && (Z_TYPE_PP(obj_zv) == IS_OBJECT || Z_TYPE_PP(obj_zv) == IS_STRING) && Z_TYPE_PP(fname_zv) == IS_STRING) {
+			/* looks like a valid callback */
+			zend_class_entry *ce, **pce;
+
+			if (Z_TYPE_PP(obj_zv) == IS_OBJECT) {
+				ce = Z_OBJCE_PP(obj_zv);
+			} else if (Z_TYPE_PP(obj_zv) == IS_STRING) {
+				if (zend_lookup_class(Z_STRVAL_PP(obj_zv), Z_STRLEN_PP(obj_zv), &pce TSRMLS_CC) == FAILURE) {
+					php_error_docref(NULL TSRMLS_CC, E_WARNING, "Class %s() not found", Z_STRVAL_PP(obj_zv));
+					RETURN_FALSE;
+				}
+				ce = *pce;
+			}
+
+			function_table = &ce->function_table;
+
+			fname = zend_str_tolower_dup(Z_STRVAL_PP(fname_zv), Z_STRLEN_PP(fname_zv));
+			fname_len = Z_STRLEN_PP(fname_zv);
+
+			if (zend_hash_exists(function_table, fname, fname_len + 1) == FAILURE) {
+				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Method %s() not found", fname);
+				efree(fname);
+				RETURN_FALSE;
+			}
+		} else {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Argument is not a valid callback");
 			return;
 		}
-		fname = Z_STRVAL_PP(fname_zv);
-		fname_len = Z_STRLEN_PP(fname_zv);
-	} else {
-		fname = Z_STRVAL_P(fci.function_name);
-		fname_len = Z_STRLEN_P(fci.function_name);
+	} else if (Z_TYPE_P(callable) == IS_STRING) {
+		fname = zend_str_tolower_dup(Z_STRVAL_P(callable), Z_STRLEN_P(callable));
+		fname_len = Z_STRLEN_P(callable);
 
 		if (fname_len == strlen("memoize") && !memcmp(fname, "memoize", fname_len)) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot memoize memoize()!");
+			efree(fname);
 			RETURN_FALSE;
 		}
+	} else {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Argument must be a string (function name) or an array (class or object and method name)");
+		RETURN_FALSE;
 	}
 
-	php_strtolower(fname, fname_len);
 
 	/* find source function */
-	if (zend_hash_find(fci.function_table, fname, fname_len + 1, (void**)&fe) == FAILURE) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() not found", fname);
+	if (zend_hash_find(function_table, fname, fname_len + 1, (void**)&fe) == FAILURE) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Function %s() not found", fname);
+		efree(fname);
 		RETURN_FALSE;
 	}
 
 	if (MEMOIZE_IS_HANDLER(fe)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() is already memoized", fe->common.function_name);
+		efree(fname);
 		RETURN_FALSE;
 	}
 
 
 	if (fe->common.return_reference) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot cache functions which return references");
+		efree(fname);
 		RETURN_FALSE;
 	}
 
@@ -379,6 +418,7 @@ PHP_FUNCTION(memoize)
 	/* find dest function */
 	if (zend_hash_find(EG(function_table), "memoize_call", strlen("memoize_call") + 1, (void**)&dfe) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "memoize_call() not found");
+		efree(fname);
 		RETURN_FALSE;
 	}
 	
@@ -390,9 +430,10 @@ PHP_FUNCTION(memoize)
 	new_dfe->common.function_name = fe->common.function_name;
 
 	/* replace source with dest */
-	if (zend_hash_update(fci.function_table, fname, fname_len + 1, new_dfe, sizeof(zend_function), NULL) == FAILURE) {
+	if (zend_hash_update(function_table, fname, fname_len + 1, new_dfe, sizeof(zend_function), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error replacing %s()", fname);
 		zend_function_dtor(&func);
+		efree(fname);
 		efree(new_dfe);
 		RETURN_FALSE;
 	}
@@ -407,18 +448,19 @@ PHP_FUNCTION(memoize)
 
 		memoize_internal_function mem_func;
 		mem_func.function = func;
-		mem_func.function_table = fci.function_table;
+		mem_func.function_table = function_table;
 		zend_hash_add(MEMOIZE_G(internal_functions), fname, fname_len + 1, (void*)&mem_func, sizeof(memoize_internal_function), NULL);
 	}
 
 	new_fname_len = spprintf(&new_fname, 0, "%s%s", fname, MEMOIZE_FUNC_SUFFIX);
-	if (zend_hash_add(fci.function_table, new_fname, new_fname_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
+	if (zend_hash_add(function_table, new_fname, new_fname_len + 1, &func, sizeof(zend_function), NULL) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error renaming %s()", fname);
 		efree(new_fname);
 		zend_function_dtor(&func);
 		RETURN_FALSE;
 	}
 	efree(new_fname);
+	efree(fname);
 
 	RETURN_TRUE;
 }
