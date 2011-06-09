@@ -326,6 +326,12 @@ PHP_FUNCTION(memoize)
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() not found", fname);
 		RETURN_FALSE;
 	}
+
+	if (fe->common.return_reference) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot cache functions which return references", fname);
+		RETURN_FALSE;
+	}
+
 	func = *fe;
 	function_add_ref(&func);
 

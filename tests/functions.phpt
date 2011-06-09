@@ -48,6 +48,14 @@ test_func('sqrt', 65536);
 test_func('sqrt', 65536);
 test_func('sqrt', 64);
 test_func('sqrt', 64);
+
+/* return by ref */
+function &function_returns_ref() {
+  $foo = "bar";
+  return $foo;
+}
+
+memoize('function_returns_ref');
 ?>
 ===DONE===
 <?php exit(0); ?>
@@ -65,4 +73,6 @@ sqrt() returned 256 in %fs
 sqrt() returned 256 in %fs
 sqrt() returned 8 in %fs
 sqrt() returned 8 in %fs
+
+Warning: memoize(): Cannot cache functions which return references in %s on line %d
 ===DONE===
