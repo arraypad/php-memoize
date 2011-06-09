@@ -130,14 +130,20 @@ PHP_MINFO_FUNCTION(memoize)
 int memoize_fix_internal_functions(zend_internal_function *fe TSRMLS_DC)
 {
 	char *new_fname = NULL;
+	zend_internal_function *hfe;
 
 	/* remove renamed function */
 	spprintf(&new_fname, 0, "%s%s", fe->function_name, MEMOIZE_FUNC_SUFFIX);
-	zend_hash_del(EG(function_table), new_fname, strlen(new_fname));
+	zend_hash_del(EG(function_table), new_fname, strlen(new_fname) + 1);
 	efree(new_fname);
 
+	/* free name from handler */
+	if (zend_hash_find(EG(function_table), fe->function_name, strlen(fe->function_name) + 1, (void**)&hfe) == SUCCESS) {
+		efree(hfe->function_name);
+	}
+
 	/* restore original function */
-	zend_hash_update(EG(function_table), fe->function_name, strlen(fe->function_name), (void*)fe, sizeof(zend_function), NULL);
+	zend_hash_update(EG(function_table), fe->function_name, strlen(fe->function_name) + 1, (void*)fe, sizeof(zend_function), NULL);
 
 	return ZEND_HASH_APPLY_REMOVE;
 }
