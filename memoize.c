@@ -222,10 +222,6 @@ void memoize_arguments_hash(int argc, char *fname, zval ***args, zval **object, 
 	int i;
 	zval *args_array;
 
-	if (argc == 0 && !object) {
-		return;
-	}
-
 	/* construct php array from args */
 	MAKE_STD_ZVAL(args_array);
 	array_init_size(args_array, argc + 2 + (object != NULL));
