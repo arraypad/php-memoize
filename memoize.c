@@ -30,9 +30,6 @@
 #include "php_memoize.h"
 #include "Zend/zend_hash.h"
 
-#include "ext/apc/apc_zend.h"
-#include "ext/apc/apc_globals.h"
-
 /* {{{ memoize_functions[]
  */
 const zend_function_entry memoize_functions[] = {
@@ -48,6 +45,7 @@ static PHP_GINIT_FUNCTION(memoize)
 {
 	memoize_globals->internal_functions = NULL;
 	memoize_globals->cache_namespace = NULL;
+	memoize_globals->storage_module = NULL;
 }
 /* }}} */
 
@@ -64,7 +62,7 @@ zend_module_entry memoize_module_entry = {
 	NULL,
 	PHP_RSHUTDOWN(memoize),
 	PHP_MINFO(memoize),
-	PHP_MEMOIZE_EXTVER,
+	MEMOIZE_EXTVER,
 	PHP_MODULE_GLOBALS(memoize),
 	PHP_GINIT(memoize),
 	NULL,
@@ -77,10 +75,58 @@ zend_module_entry memoize_module_entry = {
 ZEND_GET_MODULE(memoize)
 #endif
 
+/* {{{ Storage modules
+ */
+
+#define MEMOIZE_MAX_MODULES 10
+
+static memoize_storage_module *memoize_storage_modules[MEMOIZE_MAX_MODULES + 1] = {};
+
+static int _memoize_find_storage_module(memoize_storage_module **ret TSRMLS_DC)
+{
+	int i;
+
+	if (!MEMOIZE_G(storage_module)) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "No storage module selected");
+		return FAILURE;
+	}
+
+	for (i = 0; i < MEMOIZE_MAX_MODULES; i++) {
+		if (memoize_storage_modules[i] && !strcasecmp(MEMOIZE_G(storage_module), memoize_storage_modules[i]->name)) {
+			*ret = memoize_storage_modules[i];
+			break;
+		}
+	}
+
+	if (!ret) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Couldn't load memoize storage module '%s'", MEMOIZE_G(storage_module));
+		return FAILURE;
+	}
+
+	return SUCCESS;
+}
+
+PHPAPI int memoize_register_storage_module(memoize_storage_module *ptr)
+{
+	int i, ret = FAILURE;
+
+	for (i = 0; i < MEMOIZE_MAX_MODULES; i++) {
+		if (!memoize_storage_modules[i]) {
+			memoize_storage_modules[i] = ptr;
+			ret = SUCCESS;
+			break;
+		}
+	}
+
+	return ret;
+}
+/* }}} */
+
 /* {{{ PHP_INI
  */
 PHP_INI_BEGIN()
     STD_PHP_INI_ENTRY("memoize.cache_namespace", "", PHP_INI_ALL, OnUpdateString, cache_namespace, zend_memoize_globals, memoize_globals)
+	STD_PHP_INI_ENTRY("memoize.storage_module", "apc", PHP_INI_ALL, OnUpdateString, storage_module, zend_memoize_globals, memoize_globals)
 PHP_INI_END()
 /* }}} */
 
@@ -125,7 +171,7 @@ PHP_MINFO_FUNCTION(memoize)
 {
 	php_info_print_table_start();
 	php_info_print_table_header(2, "memoize support", "enabled");
-	php_info_print_table_row(2, "memoize version", PHP_MEMOIZE_EXTVER);
+	php_info_print_table_row(2, "memoize version", MEMOIZE_EXTVER);
 	php_info_print_table_end();
 }
 /* }}} */
@@ -168,7 +214,7 @@ int memoize_remove_handler_functions(zend_function *fe TSRMLS_DC)
 
 /* {{{ memoize_arguments_hash
 	Returns an MD5 hash of the given arguments */
-void memoize_arguments_hash(int argc, zval ***args, zval **object, char *hash TSRMLS_DC)
+void memoize_arguments_hash(int argc, char *fname, zval ***args, zval **object, char *hash TSRMLS_DC)
 {
 	php_serialize_data_t args_data;
 	smart_str args_str = {0};
@@ -182,7 +228,9 @@ void memoize_arguments_hash(int argc, zval ***args, zval **object, char *hash TS
 
 	/* construct php array from args */
 	MAKE_STD_ZVAL(args_array);
-	array_init_size(args_array, argc + (object != NULL));
+	array_init_size(args_array, argc + 2 + (object != NULL));
+	add_next_index_string(args_array, MEMOIZE_G(cache_namespace), 1);
+	add_next_index_string(args_array, fname, 1);
 	if (object) {
 		Z_ADDREF_PP(object);
 		add_next_index_zval(args_array, *object);
@@ -217,11 +265,13 @@ PHP_FUNCTION(memoize_call)
 	char hash[33] = "";
 	int argc = 0;
 	zval ***args = NULL;
-	apc_cache_entry_t* entry;
-	time_t t;
-	apc_context_t ctxt = {0,};
 	size_t key_len;
 	zend_function *fe;
+	memoize_storage_module *mod = NULL;
+
+	if (_memoize_find_storage_module(&mod TSRMLS_CC) == FAILURE) {
+		RETURN_FALSE;
+	}
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "*", &args, &argc) == FAILURE) {
 		RETURN_FALSE;
@@ -239,36 +289,12 @@ PHP_FUNCTION(memoize_call)
 
 	fname = estrdup(fe->common.function_name);
 
-	/* create apc pool */
-	ctxt.pool = apc_pool_create(APC_UNPOOL, apc_php_malloc, apc_php_free, NULL, NULL TSRMLS_CC);
-	if (!ctxt.pool) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to allocate memory for APC pool.");
-		efree(fname);
-		efree(key);
-		if (argc) {
-			efree(args);
-		}
-		RETURN_FALSE;
-	}
-	ctxt.copy = APC_COPY_OUT_USER;
-	ctxt.force_update = 0;
+	/* construct hash key */
+	memoize_arguments_hash(argc, fname, args, EG(current_execute_data)->object ? &EG(current_execute_data)->object : NULL, hash TSRMLS_CC);
+	key_len = spprintf(&key, 0, "%s%s", MEMOIZE_KEY_PREFIX, hash);
 
-	/* construct hash key from memoize.fname.serialize(args) */
-	memoize_arguments_hash(argc, args, EG(current_execute_data)->object ? &EG(current_execute_data)->object : NULL, hash TSRMLS_CC);
-	key_len = spprintf(&key, 0, "%s%s%s%s", MEMOIZE_KEY_PREFIX, MEMOIZE_G(cache_namespace), fname, hash);
-
-	/* look up key in apc */
-	t = apc_time();
-	entry = apc_cache_user_find(apc_user_cache, key, key_len, t TSRMLS_CC);
-	if (entry) {
-		/* deep-copy returned shm zval to emalloc'ed return_value */
-		apc_cache_fetch_zval(return_value, entry->data.user.val, &ctxt TSRMLS_CC);
-		apc_cache_release(apc_user_cache, entry TSRMLS_CC);
-		apc_pool_destroy(ctxt.pool TSRMLS_CC);
-	} else {
-		/* destroy fetch pool immediately since _apc_store creates another */
-		apc_pool_destroy(ctxt.pool TSRMLS_CC);
-
+	/* look up key in storage mod */
+	if (mod->get(hash, &return_value) == FAILURE) {
 		/* create callable for original function */
 		char *new_fname = NULL;
 		zval **obj_pp = NULL;
@@ -297,8 +323,8 @@ PHP_FUNCTION(memoize_call)
 		if (call_user_function(&fe->common.scope->function_table, obj_pp, callable, return_copy, argc, (argc ? *args : NULL) TSRMLS_CC) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to call memoized function %s.", fname);
 		} else {
-			/* store result in apc */
-			_apc_store(key, key_len, return_copy, 0, 0 TSRMLS_CC);
+			/* store result in storage mod */
+			mod->set(hash, return_copy);
 		}
 		zval_ptr_dtor(&callable);
 
@@ -323,9 +349,9 @@ PHP_FUNCTION(memoize)
 	size_t new_fname_len;
 	zend_function *fe, *dfe, func, *new_dfe;
 	HashTable *function_table = EG(function_table);
+	memoize_storage_module *mod = NULL;
 
-	if (!APCG(enabled)) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "APC cache is disabled");
+	if (_memoize_find_storage_module(&mod TSRMLS_CC) == FAILURE) {
 		RETURN_FALSE;
 	}
 

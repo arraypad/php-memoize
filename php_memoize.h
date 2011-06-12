@@ -21,7 +21,9 @@
 #ifndef PHP_MEMOIZE_H
 #define PHP_MEMOIZE_H
 
-#define PHP_MEMOIZE_APC_EXTVER "0.0.1-dev"
+#define MEMOIZE_EXTVER "0.0.1-dev"
+
+#include "php_memoize_storage.h"
 
 extern zend_module_entry memoize_module_entry;
 #define phpext_memoize_ptr &memoize_module_entry
@@ -46,6 +48,8 @@ PHP_MINFO_FUNCTION(memoize);
 PHP_FUNCTION(memoize);
 PHP_FUNCTION(memoize_call);
 
+PHPAPI int memoize_register_storage_module(memoize_storage_module *ptr);
+
 typedef struct {
 	HashTable *function_table;
 	zend_function function;
@@ -60,6 +64,7 @@ int memoize_remove_handler_functions(zend_function *fe TSRMLS_DC);
 ZEND_BEGIN_MODULE_GLOBALS(memoize)
 	HashTable *internal_functions;
 	char *cache_namespace;
+	char *storage_module;
 ZEND_END_MODULE_GLOBALS(memoize)
 extern ZEND_DECLARE_MODULE_GLOBALS(memoize)
 
