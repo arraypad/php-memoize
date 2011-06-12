@@ -290,7 +290,7 @@ PHP_FUNCTION(memoize_call)
 	key_len = spprintf(&key, 0, "%s%s", MEMOIZE_KEY_PREFIX, hash);
 
 	/* look up key in storage mod */
-	if (mod->get(hash, &return_value) == FAILURE) {
+	if (mod->get(key, &return_value) == FAILURE) {
 		/* create callable for original function */
 		char *new_fname = NULL;
 		zval **obj_pp = NULL;
@@ -320,7 +320,7 @@ PHP_FUNCTION(memoize_call)
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to call memoized function %s.", fname);
 		} else {
 			/* store result in storage mod */
-			mod->set(hash, return_copy);
+			mod->set(key, return_copy);
 		}
 		zval_ptr_dtor(&callable);
 
