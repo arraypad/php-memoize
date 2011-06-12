@@ -98,7 +98,7 @@ static int _memoize_find_storage_module(memoize_storage_module **ret TSRMLS_DC)
 		}
 	}
 
-	if (!ret) {
+	if (!*ret) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Couldn't load memoize storage module '%s'", MEMOIZE_G(storage_module));
 		return FAILURE;
 	}
