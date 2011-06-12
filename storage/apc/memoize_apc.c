@@ -19,9 +19,6 @@
 #include "php_memoize_apc.h"
 #include "ext/standard/info.h"
 
-#include "ext/apc/apc_zend.h"
-#include "ext/apc/apc_globals.h"
-
 memoize_storage_module memoize_storage_module_apc = {
 	MEMOIZE_STORAGE_MODULE(apc)
 };
@@ -29,11 +26,6 @@ memoize_storage_module memoize_storage_module_apc = {
 /* {{{ PHP_MINIT_FUNCTION(memoize_apc) */
 PHP_MINIT_FUNCTION(memoize_apc) 
 {
-	if (!APCG(enabled)) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "APC cache is disabled");
-		return FAILURE;
-	}
-
 	MEMOIZE_STORAGE_REGISTER(apc);
 	return SUCCESS;
 }
@@ -42,40 +34,46 @@ PHP_MINIT_FUNCTION(memoize_apc)
 /* {{{ MEMOIZE_GET_FUNC(apc) */
 MEMOIZE_GET_FUNC(apc)
 {
-	apc_cache_entry_t* entry;
-	apc_context_t ctxt = {0,};
-	time_t t;
+    int ret = FAILURE;
+    zval *func, *key_zv;
+    MAKE_STD_ZVAL(key_zv);
+    ZVAL_STRING(key_zv, key, 1);
 
-	/* create apc pool */
-	ctxt.pool = apc_pool_create(APC_UNPOOL, apc_php_malloc, apc_php_free, NULL, NULL TSRMLS_CC);
-	if (!ctxt.pool) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to allocate memory for APC pool.");
-		return FAILURE;
-	}
-	ctxt.copy = APC_COPY_OUT_USER;
-	ctxt.force_update = 0;
+    zval *params[1] = {key_zv};
 
-	/* try to get value */
-	t = apc_time();
-	entry = apc_cache_user_find(apc_user_cache, key, strlen(key), t TSRMLS_CC);
-	if (entry) {
-		/* deep-copy returned shm zval to emalloc'ed value */
-		apc_cache_fetch_zval(*value, entry->data.user.val, &ctxt TSRMLS_CC);
-		apc_cache_release(apc_user_cache, entry TSRMLS_CC);
-		apc_pool_destroy(ctxt.pool TSRMLS_CC);
+    MAKE_STD_ZVAL(func);
+    ZVAL_STRING(func, "apc_fetch", 1);
+    ret = call_user_function(EG(function_table), NULL, func, *value, 1, params TSRMLS_CC);
+    zval_ptr_dtor(&func);
+    zval_ptr_dtor(&key_zv);
 
-		return SUCCESS;
-	}
+    if (ret == SUCCESS) {
+        if (Z_TYPE_PP(value) == IS_BOOL && !Z_LVAL_PP(value)) {
+            ret = FAILURE;
+        }
+    }
 
-	apc_pool_destroy(ctxt.pool TSRMLS_CC);
-	return FAILURE;
+    return ret;
 }
 /* }}} */
 
 /* {{{ MEMOIZE_SET_FUNC(apc) */
 MEMOIZE_SET_FUNC(apc)
 {
-	return _apc_store(key, strlen(key), value, 0, 0 TSRMLS_CC);
+    int ret;
+    zval *func, *key_zv, retval;
+    MAKE_STD_ZVAL(key_zv);
+    ZVAL_STRING(key_zv, key, 1);
+
+    zval *params[2] = {key_zv, value};
+
+    MAKE_STD_ZVAL(func);
+    ZVAL_STRING(func, "apc_store", 1);
+    ret = call_user_function(EG(function_table), NULL, func, &retval, 2, params TSRMLS_CC);
+    zval_ptr_dtor(&func);
+    zval_ptr_dtor(&key_zv);
+
+    return ret;
 }
 /* }}} */
 
