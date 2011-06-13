@@ -21,6 +21,10 @@
 
 #define MEMOIZE_MEMCACHED_EXTVER "0.0.1-dev"
 
+#ifdef HAVE_LIBMEMCACHED
+# include <libmemcached/memcached.h>
+#endif
+
 #include "php.h"
 #include "php_ini.h"
 
@@ -49,6 +53,10 @@ PHP_FUNCTION(memoize_memcached_set_connection);
 
 ZEND_BEGIN_MODULE_GLOBALS(memoize_memcached)
 	zval *user_connection;
+#ifdef HAVE_LIBMEMCACHED
+    char *servers;
+    struct memcached_st *memc;
+#endif
 ZEND_END_MODULE_GLOBALS(memoize_memcached)
 extern ZEND_DECLARE_MODULE_GLOBALS(memoize_memcached)
 
