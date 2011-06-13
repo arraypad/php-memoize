@@ -36,6 +36,7 @@ memoize_storage_module memoize_storage_module_memcached = {
 };
 
 /* {{{ Globals */
+ZEND_DECLARE_MODULE_GLOBALS(memoize);
 ZEND_DECLARE_MODULE_GLOBALS(memoize_memcached);
 
 static PHP_GINIT_FUNCTION(memoize_memcached) 
@@ -127,7 +128,7 @@ static int _memoize_memcached_get(char *key, zval **value TSRMLS_DC) /* {{{ */
 }
 /* }}} */
 
-static int _memoize_memcached_set(char *key, zval *value TSRMLS_DC) /* {{{ */
+static int _memoize_memcached_set(char *key, zval *value, time_t expiry TSRMLS_DC) /* {{{ */
 {
 	memcached_return_t rc;
 	php_serialize_data_t var_hash;
@@ -145,7 +146,7 @@ static int _memoize_memcached_set(char *key, zval *value TSRMLS_DC) /* {{{ */
 		return FAILURE;
 	}
 
-	rc = memcached_set(MEMOIZE_MEMCACHED_G(memc), key, strlen(key), buf.c, strlen(buf.c), (time_t)0, (uint32_t)0);
+	rc = memcached_set(MEMOIZE_MEMCACHED_G(memc), key, strlen(key), buf.c, strlen(buf.c), expiry, (uint32_t)0);
 	smart_str_free(&buf);
 	if (rc == MEMCACHED_SUCCESS || rc == MEMCACHED_BUFFERED) {
 		return SUCCESS;
@@ -232,25 +233,35 @@ MEMOIZE_GET_FUNC(memcached)
 MEMOIZE_SET_FUNC(memcached)
 {
 	int ret = FAILURE;
+	time_t expiry = 0;
+
+	if (MEMOIZE_G(default_ttl)) {
+		expiry = time(NULL) + MEMOIZE_G(default_ttl);
+	}
 
 	if (MEMOIZE_MEMCACHED_G(user_connection)) {
-		zval *func, *key_zv, retval;
+		zval *func, *key_zv, *expiry_zv, retval;
+
 		MAKE_STD_ZVAL(key_zv);
 		ZVAL_STRING(key_zv, key, 1);
 
-		zval *params[2] = {key_zv, value};
+		MAKE_STD_ZVAL(expiry_zv);
+		ZVAL_LONG(expiry_zv, expiry);
+
+		zval *params[3] = {key_zv, value, expiry_zv};
 
 		MAKE_STD_ZVAL(func);
 		ZVAL_STRING(func, "set", 1);
-		ret = call_user_function(NULL, &MEMOIZE_MEMCACHED_G(user_connection), func, &retval, 2, params TSRMLS_CC);
+		ret = call_user_function(NULL, &MEMOIZE_MEMCACHED_G(user_connection), func, &retval, 3, params TSRMLS_CC);
 		zval_ptr_dtor(&func);
 		zval_ptr_dtor(&key_zv);
+    	zval_ptr_dtor(&expiry_zv);
 
 		return ret;
 	}
 
 #ifdef HAVE_LIBMEMCACHED
-	return _memoize_memcached_set(key, value TSRMLS_CC);
+	return _memoize_memcached_set(key, value, expiry TSRMLS_CC);
 #endif
 
 	return ret;

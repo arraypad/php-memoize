@@ -23,6 +23,8 @@ memoize_storage_module memoize_storage_module_apc = {
 	MEMOIZE_STORAGE_MODULE(apc)
 };
 
+ZEND_DECLARE_MODULE_GLOBALS(memoize);
+
 /* {{{ PHP_MINIT_FUNCTION(memoize_apc) */
 PHP_MINIT_FUNCTION(memoize_apc) 
 {
@@ -61,17 +63,21 @@ MEMOIZE_GET_FUNC(apc)
 MEMOIZE_SET_FUNC(apc)
 {
     int ret;
-    zval *func, *key_zv, retval;
+    zval *func, *key_zv, *expiry_zv, retval;
     MAKE_STD_ZVAL(key_zv);
     ZVAL_STRING(key_zv, key, 1);
 
-    zval *params[2] = {key_zv, value};
+	MAKE_STD_ZVAL(expiry_zv);
+	ZVAL_LONG(expiry_zv, MEMOIZE_G(default_ttl));
+
+	zval *params[3] = {key_zv, value, expiry_zv};
 
     MAKE_STD_ZVAL(func);
     ZVAL_STRING(func, "apc_store", 1);
-    ret = call_user_function(EG(function_table), NULL, func, &retval, 2, params TSRMLS_CC);
+    ret = call_user_function(EG(function_table), NULL, func, &retval, 3, params TSRMLS_CC);
     zval_ptr_dtor(&func);
     zval_ptr_dtor(&key_zv);
+    zval_ptr_dtor(&expiry_zv);
 
     return ret;
 }

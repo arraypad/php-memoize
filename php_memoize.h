@@ -65,6 +65,7 @@ ZEND_BEGIN_MODULE_GLOBALS(memoize)
 	HashTable *internal_functions;
 	char *cache_namespace;
 	char *storage_module;
+	long default_ttl;
 ZEND_END_MODULE_GLOBALS(memoize)
 extern ZEND_DECLARE_MODULE_GLOBALS(memoize)
 

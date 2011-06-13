@@ -46,6 +46,7 @@ static PHP_GINIT_FUNCTION(memoize)
 	memoize_globals->internal_functions = NULL;
 	memoize_globals->cache_namespace = NULL;
 	memoize_globals->storage_module = NULL;
+	memoize_globals->default_ttl = 0;
 }
 /* }}} */
 
@@ -127,6 +128,7 @@ PHPAPI int memoize_register_storage_module(memoize_storage_module *ptr)
 PHP_INI_BEGIN()
     STD_PHP_INI_ENTRY("memoize.cache_namespace", "", PHP_INI_ALL, OnUpdateString, cache_namespace, zend_memoize_globals, memoize_globals)
 	STD_PHP_INI_ENTRY("memoize.storage_module", "apc", PHP_INI_ALL, OnUpdateString, storage_module, zend_memoize_globals, memoize_globals)
+	STD_PHP_INI_ENTRY("memoize.default_ttl", "3600", PHP_INI_ALL, OnUpdateLong, default_ttl, zend_memoize_globals, memoize_globals)
 PHP_INI_END()
 /* }}} */
 
