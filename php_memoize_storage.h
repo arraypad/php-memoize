@@ -48,6 +48,6 @@ typedef struct _memoize_storage_module {
 	
 /* Register the storage module. called from MINIT in module */
 #define MEMOIZE_STORAGE_REGISTER(mod_name) \
-	memoize_register_storage_module(memoize_storage_module_##mod_name##_ptr TSRMLS_CC)
+	memoize_register_storage_module(memoize_storage_module_##mod_name##_ptr)
 
 #endif

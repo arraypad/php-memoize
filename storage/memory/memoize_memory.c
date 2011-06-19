@@ -69,9 +69,8 @@ MEMOIZE_GET_FUNC(memory)
 /* {{{ MEMOIZE_SET_FUNC(memory) */
 MEMOIZE_SET_FUNC(memory)
 {
-	zval *tmp = value;
-	Z_ADDREF_P(tmp);
-	return zend_hash_update(MEMOIZE_MEMORY_G(store), key, strlen(key) + 1, (void *)&tmp, sizeof(zval *), NULL);
+	Z_ADDREF_P(value);
+	return zend_hash_update(MEMOIZE_MEMORY_G(store), key, strlen(key) + 1, (void *)&value, sizeof(zval *), NULL);
 }
 /* }}} */
 

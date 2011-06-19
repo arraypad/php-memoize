@@ -17,13 +17,13 @@
 */
 
 #include "php_memoize_apc.h"
+#include "ext/memoize/php_memoize.h"
 #include "ext/standard/info.h"
 
 memoize_storage_module memoize_storage_module_apc = {
 	MEMOIZE_STORAGE_MODULE(apc)
 };
 
-ZEND_DECLARE_MODULE_GLOBALS(memoize);
 
 /* {{{ PHP_MINIT_FUNCTION(memoize_apc) */
 PHP_MINIT_FUNCTION(memoize_apc) 

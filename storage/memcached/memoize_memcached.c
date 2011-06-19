@@ -36,7 +36,6 @@ memoize_storage_module memoize_storage_module_memcached = {
 };
 
 /* {{{ Globals */
-ZEND_DECLARE_MODULE_GLOBALS(memoize);
 ZEND_DECLARE_MODULE_GLOBALS(memoize_memcached);
 
 static PHP_GINIT_FUNCTION(memoize_memcached) 
@@ -51,7 +50,7 @@ static PHP_GINIT_FUNCTION(memoize_memcached)
 
 /* {{{ libmemcached */
 #ifdef HAVE_LIBMEMCACHED
-static int _memoize_memcached_connect(TSRMLS_DC) /* {{{ */
+static int _memoize_memcached_connect(TSRMLS_D) /* {{{ */
 {
 	char *servers, *server_last, *server_part;
 	memcached_return status;
@@ -103,7 +102,7 @@ static int _memoize_memcached_get(char *key, zval **value TSRMLS_DC) /* {{{ */
 	uint32_t flags;
 	php_unserialize_data_t var_hash;
 
-	if (_memoize_memcached_connect(TSRMLS_CC) == FAILURE) {
+	if (_memoize_memcached_connect(TSRMLS_C) == FAILURE) {
 		return FAILURE;
 	}
 
@@ -134,7 +133,7 @@ static int _memoize_memcached_set(char *key, zval *value, time_t expiry TSRMLS_D
 	php_serialize_data_t var_hash;
 	smart_str buf = {0};
 
-	if (_memoize_memcached_connect(TSRMLS_CC) == FAILURE) {
+	if (_memoize_memcached_connect(TSRMLS_C) == FAILURE) {
 		return FAILURE;
 	}
 
@@ -293,7 +292,7 @@ PHP_FUNCTION(memoize_memcached_set_connection)
 		RETURN_FALSE;
 	}
 
-	if (!instanceof_function(Z_OBJCE_P(obj), *ce)) {
+	if (!instanceof_function(Z_OBJCE_P(obj), *ce TSRMLS_CC)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Connection must be an instance of the Memcached class");
 		RETURN_FALSE;
 	}

@@ -38,6 +38,7 @@
 /* Hook into memoize module */
 extern memoize_storage_module memoize_storage_module_apc;
 #define memoize_storage_module_apc_ptr &memoize_storage_module_apc
+ZEND_EXTERN_MODULE_GLOBALS(memoize);
 
 /* Normal PHP entry */
 extern zend_module_entry memoize_apc_module_entry;

@@ -67,7 +67,6 @@ ZEND_BEGIN_MODULE_GLOBALS(memoize)
 	char *storage_module;
 	long default_ttl;
 ZEND_END_MODULE_GLOBALS(memoize)
-extern ZEND_DECLARE_MODULE_GLOBALS(memoize)
 
 #ifdef ZTS
 #define MEMOIZE_G(v) TSRMG(memoize_globals_id, zend_memoize_globals *, v)

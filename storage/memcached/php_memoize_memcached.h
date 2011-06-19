@@ -42,6 +42,7 @@
 /* Hook into memoize module */
 extern memoize_storage_module memoize_storage_module_memcached;
 #define memoize_storage_module_memcached_ptr &memoize_storage_module_memcached
+ZEND_EXTERN_MODULE_GLOBALS(memoize);
 
 /* Normal PHP entry */
 extern zend_module_entry memoize_memcached_module_entry;
