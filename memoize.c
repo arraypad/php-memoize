@@ -23,12 +23,10 @@
 #include "php.h"
 #include "php_ini.h"
 #include "ext/standard/info.h"
-#include "ext/standard/php_string.h"
 #include "ext/standard/php_var.h"
 #include "ext/standard/php_smart_str.h"
 #include "ext/standard/md5.h"
 #include "php_memoize.h"
-#include "Zend/zend_hash.h"
 
 /* {{{ memoize_functions[]
  */
@@ -219,6 +217,7 @@ int memoize_remove_handler_functions(zend_function *fe TSRMLS_DC)
 void memoize_arguments_hash(int argc, char *fname, zval ***args, zval **object, char *hash TSRMLS_DC)
 {
 	php_serialize_data_t args_data;
+	unsigned char raw_hash[16];
 	smart_str args_str = {0};
 	PHP_MD5_CTX md5ctx;
 	int i;
@@ -246,7 +245,6 @@ void memoize_arguments_hash(int argc, char *fname, zval ***args, zval **object, 
 	zval_ptr_dtor(&args_array);
 
 	/* hash serialized string */
-	unsigned char raw_hash[16];
 	PHP_MD5Init(&md5ctx);
 	PHP_MD5Update(&md5ctx, args_str.c, args_str.len);
 	PHP_MD5Final(raw_hash, &md5ctx);
