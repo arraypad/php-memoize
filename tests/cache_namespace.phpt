@@ -3,9 +3,7 @@ memoize - cache_namespace
 --SKIPIF--
 <?php include('skipif.inc'); ?>
 --INI--
-apc.enabled=1
-apc.enable_cli=1
-apc.file_update_protection=0
+memoize.storage_module=memory
 --FILE--
 <?php
 

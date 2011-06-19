@@ -2,7 +2,7 @@ Introduction
 =========
 php-memoize is a PHP extension which transparently caches PHP functions, much like [Perl's Memoize module](http://perldoc.perl.org/Memoize.html).
 
-It uses APC or memcached for the caching, so values persist between requests.
+It uses APC or memcached for the caching, so values can persist between requests.
 
 Usage
 =====
@@ -49,7 +49,7 @@ All of the below ini settings can be changed at any time (PHP_INI_ALL).
 	<tr>
 		<td>memoize.storage_module</td>
 		<td>String</td>
-		<td>The storage module to use ("apc" or "memcached")</td>
+		<td>The storage module to use ("memory", "apc" or "memcached")</td>
 	</tr>
 	<tr>
 		<td>memoize.cache_namespace</td>

@@ -3,9 +3,7 @@ memoize - methods
 --SKIPIF--
 <?php include('skipif.inc'); ?>
 --INI--
-apc.enabled=1
-apc.enable_cli=1
-apc.file_update_protection=0
+memoize.storage_module=memory
 --FILE--
 <?php
 error_reporting(E_ALL|E_STRICT);

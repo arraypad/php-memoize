@@ -127,7 +127,7 @@ PHPAPI int memoize_register_storage_module(memoize_storage_module *ptr)
  */
 PHP_INI_BEGIN()
     STD_PHP_INI_ENTRY("memoize.cache_namespace", "", PHP_INI_ALL, OnUpdateString, cache_namespace, zend_memoize_globals, memoize_globals)
-	STD_PHP_INI_ENTRY("memoize.storage_module", "apc", PHP_INI_ALL, OnUpdateString, storage_module, zend_memoize_globals, memoize_globals)
+	STD_PHP_INI_ENTRY("memoize.storage_module", "memory", PHP_INI_ALL, OnUpdateString, storage_module, zend_memoize_globals, memoize_globals)
 	STD_PHP_INI_ENTRY("memoize.default_ttl", "3600", PHP_INI_ALL, OnUpdateLong, default_ttl, zend_memoize_globals, memoize_globals)
 PHP_INI_END()
 /* }}} */
@@ -292,7 +292,7 @@ PHP_FUNCTION(memoize_call)
 	key_len = spprintf(&key, 0, "%s%s", MEMOIZE_KEY_PREFIX, hash);
 
 	/* look up key in storage mod */
-	if (mod->get(key, &return_value) == FAILURE) {
+	if (mod->get(key, return_value_ptr) == FAILURE) {
 		/* create callable for original function */
 		char *new_fname = NULL;
 		zval **obj_pp = NULL;
@@ -316,17 +316,13 @@ PHP_FUNCTION(memoize_call)
 		}
 
 		/* call original function */
-		zval *return_copy;
-		MAKE_STD_ZVAL(return_copy);
-		if (call_user_function(&fe->common.scope->function_table, obj_pp, callable, return_copy, argc, (argc ? *args : NULL) TSRMLS_CC) == FAILURE) {
+		if (call_user_function(&fe->common.scope->function_table, obj_pp, callable, *return_value_ptr, argc, (argc ? *args : NULL) TSRMLS_CC) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to call memoized function %s.", fname);
 		} else {
 			/* store result in storage mod */
-			mod->set(key, return_copy);
+			mod->set(key, *return_value_ptr);
 		}
 		zval_ptr_dtor(&callable);
-
-		COPY_PZVAL_TO_ZVAL(*return_value, return_copy);
 	}
 
 	efree(fname);
