@@ -36,50 +36,50 @@ PHP_MINIT_FUNCTION(memoize_apc)
 /* {{{ MEMOIZE_GET_FUNC(apc) */
 MEMOIZE_GET_FUNC(apc)
 {
-    int ret = FAILURE;
-    zval *func, *key_zv;
-    MAKE_STD_ZVAL(key_zv);
-    ZVAL_STRING(key_zv, key, 1);
+	int ret = FAILURE;
+	zval *func, *key_zv;
+	MAKE_STD_ZVAL(key_zv);
+	ZVAL_STRING(key_zv, key, 1);
 
-    zval *params[1] = {key_zv};
+	zval *params[1] = {key_zv};
 
-    MAKE_STD_ZVAL(func);
-    ZVAL_STRING(func, "apc_fetch", 1);
-    ret = call_user_function(EG(function_table), NULL, func, *value, 1, params TSRMLS_CC);
-    zval_ptr_dtor(&func);
-    zval_ptr_dtor(&key_zv);
+	MAKE_STD_ZVAL(func);
+	ZVAL_STRING(func, "apc_fetch", 1);
+	ret = call_user_function(EG(function_table), NULL, func, *value, 1, params TSRMLS_CC);
+	zval_ptr_dtor(&func);
+	zval_ptr_dtor(&key_zv);
 
-    if (ret == SUCCESS) {
-        if (Z_TYPE_PP(value) == IS_BOOL && !Z_LVAL_PP(value)) {
-            ret = FAILURE;
-        }
-    }
+	if (ret == SUCCESS) {
+		if (Z_TYPE_PP(value) == IS_BOOL && !Z_LVAL_PP(value)) {
+			ret = FAILURE;
+		}
+	}
 
-    return ret;
+	return ret;
 }
 /* }}} */
 
 /* {{{ MEMOIZE_SET_FUNC(apc) */
 MEMOIZE_SET_FUNC(apc)
 {
-    int ret;
-    zval *func, *key_zv, *expiry_zv, retval;
-    MAKE_STD_ZVAL(key_zv);
-    ZVAL_STRING(key_zv, key, 1);
+	int ret;
+	zval *func, *key_zv, *expiry_zv, retval;
+	MAKE_STD_ZVAL(key_zv);
+	ZVAL_STRING(key_zv, key, 1);
 
 	MAKE_STD_ZVAL(expiry_zv);
 	ZVAL_LONG(expiry_zv, MEMOIZE_G(default_ttl));
 
 	zval *params[3] = {key_zv, value, expiry_zv};
 
-    MAKE_STD_ZVAL(func);
-    ZVAL_STRING(func, "apc_store", 1);
-    ret = call_user_function(EG(function_table), NULL, func, &retval, 3, params TSRMLS_CC);
-    zval_ptr_dtor(&func);
-    zval_ptr_dtor(&key_zv);
-    zval_ptr_dtor(&expiry_zv);
+	MAKE_STD_ZVAL(func);
+	ZVAL_STRING(func, "apc_store", 1);
+	ret = call_user_function(EG(function_table), NULL, func, &retval, 3, params TSRMLS_CC);
+	zval_ptr_dtor(&func);
+	zval_ptr_dtor(&key_zv);
+	zval_ptr_dtor(&expiry_zv);
 
-    return ret;
+	return ret;
 }
 /* }}} */
 

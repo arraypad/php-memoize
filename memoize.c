@@ -126,7 +126,7 @@ PHPAPI int memoize_register_storage_module(memoize_storage_module *ptr)
 /* {{{ PHP_INI
  */
 PHP_INI_BEGIN()
-    STD_PHP_INI_ENTRY("memoize.cache_namespace", "", PHP_INI_ALL, OnUpdateString, cache_namespace, zend_memoize_globals, memoize_globals)
+	STD_PHP_INI_ENTRY("memoize.cache_namespace", "", PHP_INI_ALL, OnUpdateString, cache_namespace, zend_memoize_globals, memoize_globals)
 	STD_PHP_INI_ENTRY("memoize.storage_module", "memory", PHP_INI_ALL, OnUpdateString, storage_module, zend_memoize_globals, memoize_globals)
 	STD_PHP_INI_ENTRY("memoize.default_ttl", "3600", PHP_INI_ALL, OnUpdateLong, default_ttl, zend_memoize_globals, memoize_globals)
 PHP_INI_END()

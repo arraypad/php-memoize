@@ -36,8 +36,8 @@ static PHP_GINIT_FUNCTION(memoize_memory)
 PHP_RINIT_FUNCTION(memoize_memory) 
 {
 	MEMOIZE_STORAGE_REGISTER(memory);
-    ALLOC_HASHTABLE(MEMOIZE_MEMORY_G(store));
-    return zend_hash_init(MEMOIZE_MEMORY_G(store), 4, NULL, (dtor_func_t)ZVAL_PTR_DTOR, 0);
+	ALLOC_HASHTABLE(MEMOIZE_MEMORY_G(store));
+	return zend_hash_init(MEMOIZE_MEMORY_G(store), 4, NULL, (dtor_func_t)ZVAL_PTR_DTOR, 0);
 }
 /* }}} */
 

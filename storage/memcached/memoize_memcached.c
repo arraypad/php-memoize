@@ -161,7 +161,7 @@ static int _memoize_memcached_set(char *key, zval *value, time_t expiry TSRMLS_D
 /* {{{ PHP_INI
  */
 PHP_INI_BEGIN()
-    STD_PHP_INI_ENTRY("memoize.memcached.servers", "", PHP_INI_ALL, OnUpdateString, servers, zend_memoize_memcached_globals, memoize_memcached_globals)
+	STD_PHP_INI_ENTRY("memoize.memcached.servers", "", PHP_INI_ALL, OnUpdateString, servers, zend_memoize_memcached_globals, memoize_memcached_globals)
 PHP_INI_END()
 /* }}} */
 
@@ -255,7 +255,7 @@ MEMOIZE_SET_FUNC(memcached)
 		ret = call_user_function(NULL, &MEMOIZE_MEMCACHED_G(user_connection), func, &retval, 3, params TSRMLS_CC);
 		zval_ptr_dtor(&func);
 		zval_ptr_dtor(&key_zv);
-    	zval_ptr_dtor(&expiry_zv);
+		zval_ptr_dtor(&expiry_zv);
 
 		return ret;
 	}

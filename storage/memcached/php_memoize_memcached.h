@@ -54,8 +54,8 @@ PHP_FUNCTION(memoize_memcached_set_connection);
 ZEND_BEGIN_MODULE_GLOBALS(memoize_memcached)
 	zval *user_connection;
 #ifdef HAVE_LIBMEMCACHED
-    char *servers;
-    struct memcached_st *memc;
+	char *servers;
+	struct memcached_st *memc;
 #endif
 ZEND_END_MODULE_GLOBALS(memoize_memcached)
 extern ZEND_DECLARE_MODULE_GLOBALS(memoize_memcached)
