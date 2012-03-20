@@ -260,7 +260,7 @@ PHP_FUNCTION(memoize_call)
 	char *fname, *key = NULL;
 	char hash[33] = "";
 	int argc = 0;
-	zval ***args = NULL;
+	zval ***args = NULL, *temp_value = NULL;
 	size_t key_len;
 	zend_function *fe;
 	memoize_storage_module *mod = NULL;
@@ -313,6 +313,12 @@ PHP_FUNCTION(memoize_call)
 			ZVAL_STRINGL(callable, new_fname, new_fname_len, 0);
 		}
 
+		/* ensure we have a zval for the return value even if it isn't used */ 
+		if (!return_value_used) {
+			MAKE_STD_ZVAL(temp_value);
+			return_value_ptr = &temp_value;
+		}
+
 		/* call original function */
 		if (call_user_function(&fe->common.scope->function_table, obj_pp, callable, *return_value_ptr, argc, (argc ? *args : NULL) TSRMLS_CC) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to call memoized function %s.", fname);
@@ -321,6 +327,11 @@ PHP_FUNCTION(memoize_call)
 			mod->set(key, *return_value_ptr TSRMLS_CC);
 		}
 		zval_ptr_dtor(&callable);
+
+		/* free the return value if it's not being returned */
+		if (temp_value) {
+			zval_ptr_dtor(&temp_value);
+		}
 	}
 
 	efree(fname);
