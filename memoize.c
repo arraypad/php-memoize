@@ -428,7 +428,7 @@ PHP_FUNCTION(memoize)
 	}
 
 
-	if (fe->common.return_reference) {
+	if (MEMOIZE_RETURNS_REFERENCE(fe)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cannot cache functions which return references");
 		efree(fname);
 		RETURN_FALSE;

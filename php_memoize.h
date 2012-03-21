@@ -74,6 +74,13 @@ ZEND_END_MODULE_GLOBALS(memoize)
 #define MEMOIZE_G(v) (memoize_globals.v)
 #endif
 
+#if ZEND_MODULE_API_NO >= 20100525
+#define MEMOIZE_RETURNS_REFERENCE(fe) (fe->common.fn_flags & ZEND_ACC_RETURN_REFERENCE)
+#else
+#define MEMOIZE_RETURNS_REFERENCE(fe) (fe->common.return_reference)
+#endif
+
+
 #endif	/* PHP_MEMOIZE_H */
 
 
