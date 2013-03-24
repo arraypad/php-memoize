@@ -33,7 +33,7 @@ extern zend_module_entry memoize_module_entry;
 #elif defined(__GNUC__) && __GNUC__ >= 4
 #	define PHP_MEMOIZE_API __attribute__ ((visibility("default")))
 #else
-#	define PHP_MEMOIZE_API
+#	define PHP_MEMOIZE_API 
 #endif
 
 #ifdef ZTS
@@ -48,7 +48,7 @@ PHP_MINFO_FUNCTION(memoize);
 PHP_FUNCTION(memoize);
 PHP_FUNCTION(memoize_call);
 
-PHP_MEMOIZE_API int memoize_register_storage_module(memoize_storage_module *ptr);
+extern PHP_MEMOIZE_API int memoize_register_storage_module(memoize_storage_module *ptr);
 
 typedef struct {
 	HashTable *function_table;
