@@ -38,7 +38,7 @@ const zend_function_entry memoize_functions[] = {
 /* }}} */
 
 /* {{{ PHP_GINIT_FUNCTION(memoize) */
-ZEND_EXTERN_MODULE_GLOBALS(memoize);
+ZEND_DECLARE_MODULE_GLOBALS(memoize);
 static PHP_GINIT_FUNCTION(memoize)
 {
 	memoize_globals->internal_functions = NULL;
