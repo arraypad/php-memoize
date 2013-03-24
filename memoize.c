@@ -79,7 +79,7 @@ ZEND_GET_MODULE(memoize)
 
 #define MEMOIZE_MAX_MODULES 10
 
-static memoize_storage_module *memoize_storage_modules[MEMOIZE_MAX_MODULES + 1] = {};
+static memoize_storage_module *memoize_storage_modules[MEMOIZE_MAX_MODULES + 1] = { NULL };
 
 static int _memoize_find_storage_module(memoize_storage_module **ret TSRMLS_DC)
 {
