@@ -448,7 +448,7 @@ PHP_FUNCTION(memoize)
 	new_dfe = emalloc(sizeof(zend_function));
 	memcpy(new_dfe, dfe, sizeof(zend_function));
 	new_dfe->common.scope = fe->common.scope;
-	new_dfe->common.fn_flags = fe->common.fn_flags;
+	new_dfe->common.fn_flags = fe->common.fn_flags | ZEND_ACC_RETURN_REFERENCE;
 	new_dfe->common.function_name = fe->common.function_name;
 
 	/* replace source with dest */
