@@ -54,6 +54,7 @@ static int _memoize_memcached_connect(TSRMLS_D) /* {{{ */
 {
 	char *servers, *server_last, *server_part;
 	memcached_return status;
+	char *server;
 	int ret = SUCCESS;
 
 	if (MEMOIZE_MEMCACHED_G(memc)) {
@@ -72,11 +73,12 @@ static int _memoize_memcached_connect(TSRMLS_D) /* {{{ */
 	servers = estrdup(MEMOIZE_MEMCACHED_G(servers));
 	server_part = php_strtok_r(servers, ",", &server_last);
 	while (server_part != NULL) {
-		char *server = php_trim(server_part, strlen(server_part), NULL, 0, NULL, 3 TSRMLS_CC);
+		server = php_trim(server_part, strlen(server_part), NULL, 0, NULL, 3 TSRMLS_CC);
 		if (server) {
 			char host[256], *server_dup;
-			int port = 11211;
-			int has_port = sscanf(server, "%[^:]:%d", host, &port) == 2;
+			int has_port, port = 11211;
+
+			has_port = sscanf(server, "%[^:]:%d", host, &port) == 2;
 			server_dup = estrdup(has_port ? host : server);
 			status = memcached_server_add(MEMOIZE_MEMCACHED_G(memc), server_dup, port);
 			if (status != MEMCACHED_SUCCESS) {
@@ -101,6 +103,7 @@ static int _memoize_memcached_get(char *key, zval **value TSRMLS_DC) /* {{{ */
 	size_t data_len;
 	uint32_t flags;
 	php_unserialize_data_t var_hash;
+	const unsigned char *p;
 
 	if (_memoize_memcached_connect(TSRMLS_C) == FAILURE) {
 		return FAILURE;
@@ -112,7 +115,7 @@ static int _memoize_memcached_get(char *key, zval **value TSRMLS_DC) /* {{{ */
 		return FAILURE;
 	}
 
-	const unsigned char *p = (const unsigned char*)data;
+	p = (const unsigned char*)data;
 	PHP_VAR_UNSERIALIZE_INIT(var_hash);
 	if (!php_var_unserialize(value, &p, p + data_len, &var_hash TSRMLS_CC)) {
 		free(data);
@@ -197,13 +200,14 @@ PHP_RSHUTDOWN_FUNCTION(memoize_memcached)
 MEMOIZE_GET_FUNC(memcached)
 {
 	int ret = FAILURE;
+	zval *func, *key_zv;
+	zval *params[1];
 
 	if (MEMOIZE_MEMCACHED_G(user_connection)) {
-		zval *func, *key_zv;
 		MAKE_STD_ZVAL(key_zv);
 		ZVAL_STRING(key_zv, key, 1);
 
-		zval *params[1] = {key_zv};
+		params[0] = key_zv;
 
 		MAKE_STD_ZVAL(func);
 		ZVAL_STRING(func, "get", 1);
@@ -233,21 +237,22 @@ MEMOIZE_SET_FUNC(memcached)
 {
 	int ret = FAILURE;
 	time_t expiry = 0;
+	zval *func, *key_zv, *expiry_zv, retval, *params[3];
 
 	if (MEMOIZE_G(default_ttl)) {
 		expiry = time(NULL) + MEMOIZE_G(default_ttl);
 	}
 
 	if (MEMOIZE_MEMCACHED_G(user_connection)) {
-		zval *func, *key_zv, *expiry_zv, retval;
-
 		MAKE_STD_ZVAL(key_zv);
 		ZVAL_STRING(key_zv, key, 1);
 
 		MAKE_STD_ZVAL(expiry_zv);
 		ZVAL_LONG(expiry_zv, expiry);
 
-		zval *params[3] = {key_zv, value, expiry_zv};
+		params[0] = key_zv;
+		params[1] = value;
+		params[2] = expiry_zv;
 
 		MAKE_STD_ZVAL(func);
 		ZVAL_STRING(func, "set", 1);

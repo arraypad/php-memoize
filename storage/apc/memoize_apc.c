@@ -38,10 +38,11 @@ MEMOIZE_GET_FUNC(apc)
 {
 	int ret = FAILURE;
 	zval *func, *key_zv;
+	zval *params[1];
+
 	MAKE_STD_ZVAL(key_zv);
 	ZVAL_STRING(key_zv, key, 1);
-
-	zval *params[1] = {key_zv};
+	params[0] = key_zv;
 
 	MAKE_STD_ZVAL(func);
 	ZVAL_STRING(func, "apc_fetch", 1);
@@ -64,13 +65,17 @@ MEMOIZE_SET_FUNC(apc)
 {
 	int ret;
 	zval *func, *key_zv, *expiry_zv, retval;
+	zval *params[3];
+
 	MAKE_STD_ZVAL(key_zv);
 	ZVAL_STRING(key_zv, key, 1);
 
 	MAKE_STD_ZVAL(expiry_zv);
 	ZVAL_LONG(expiry_zv, MEMOIZE_G(default_ttl));
 
-	zval *params[3] = {key_zv, value, expiry_zv};
+	params[0] = key_zv;
+	params[1] = value;
+	params[2] = expiry_zv;
 
 	MAKE_STD_ZVAL(func);
 	ZVAL_STRING(func, "apc_store", 1);

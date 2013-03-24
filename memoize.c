@@ -105,7 +105,7 @@ static int _memoize_find_storage_module(memoize_storage_module **ret TSRMLS_DC)
 	return SUCCESS;
 }
 
-PHPAPI int memoize_register_storage_module(memoize_storage_module *ptr)
+PHP_MEMOIZE_API int memoize_register_storage_module(memoize_storage_module *ptr)
 {
 	int i, ret = FAILURE;
 
@@ -463,12 +463,13 @@ PHP_FUNCTION(memoize)
 
 	/* rename source */
 	if (func.type == ZEND_INTERNAL_FUNCTION) {
+		memoize_internal_function mem_func;
+
 		if (!MEMOIZE_G(internal_functions)) {
 			ALLOC_HASHTABLE(MEMOIZE_G(internal_functions));
 			zend_hash_init(MEMOIZE_G(internal_functions), 4, NULL, NULL, 0);
 		}
 
-		memoize_internal_function mem_func;
 		mem_func.function = func;
 		mem_func.function_table = function_table;
 		zend_hash_add(MEMOIZE_G(internal_functions), fname, fname_len + 1, (void*)&mem_func, sizeof(memoize_internal_function), NULL);
