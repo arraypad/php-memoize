@@ -1,11 +1,8 @@
 --TEST--
 memoize - cache_namespace
---SKIPIF--
-<?php include('skipif.inc'); ?>
---INI--
-memoize.storage_module=memory
 --FILE--
 <?php
+require 'init.inc';
 
 function test_func($f) {
   $args = func_get_args();
