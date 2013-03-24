@@ -5,6 +5,6 @@ ARG_ENABLE("memoize", "enable memoize support", "no");
 
 if (PHP_MEMOIZE != "no") {
 	EXTENSION("memoize", "memoize.c");
-	PHP_INSTALL_HEADERS("ext/memoize", "php_memoize.h php_memoize_storage.h")
+	PHP_INSTALL_HEADERS("", "ext/memoize")
 }
 
