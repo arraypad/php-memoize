@@ -48,7 +48,7 @@ PHP_MINFO_FUNCTION(memoize);
 PHP_FUNCTION(memoize);
 PHP_FUNCTION(memoize_call);
 
-PHPAPI int memoize_register_storage_module(memoize_storage_module *ptr);
+PHP_MEMOIZE_API int memoize_register_storage_module(memoize_storage_module *ptr);
 
 typedef struct {
 	HashTable *function_table;
