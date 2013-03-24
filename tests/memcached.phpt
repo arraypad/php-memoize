@@ -1,7 +1,6 @@
 --TEST--
 memoize - memcached
 --SKIPIF--
-<?php include('skipif.inc'); ?>
 <?php if (!extension_loaded("memcached") || !extension_loaded("memoize_memcached")) { die("skip"); } ?>
 --INI--
 memoize.storage_module=memcached
