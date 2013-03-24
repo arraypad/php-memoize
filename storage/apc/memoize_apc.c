@@ -71,7 +71,7 @@ MEMOIZE_SET_FUNC(apc)
 	ZVAL_STRING(key_zv, key, 1);
 
 	MAKE_STD_ZVAL(expiry_zv);
-	ZVAL_LONG(expiry_zv, MEMOIZE_G(default_ttl));
+	ZVAL_LONG(expiry_zv, INI_INT("memoize.default_ttl"));
 
 	params[0] = key_zv;
 	params[1] = value;
