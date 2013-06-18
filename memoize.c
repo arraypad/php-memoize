@@ -75,7 +75,11 @@ zend_module_entry memoize_module_entry = {
 	memoize_functions,
 	PHP_MINIT(memoize),
 	PHP_MSHUTDOWN(memoize),
+#ifdef HAVE_MEMOIZE_MEMORY
 	PHP_RINIT(memoize),
+#else
+	NULL,
+#endif
 	PHP_RSHUTDOWN(memoize),
 	PHP_MINFO(memoize),
 	MEMOIZE_EXTVER,
@@ -183,15 +187,15 @@ PHP_MSHUTDOWN_FUNCTION(memoize)
 /* }}} */
 
 
+#ifdef HAVE_MEMOIZE_MEMORY
 /* {{{ PHP_RINIT_FUNCTION(memoize) */
 PHP_RINIT_FUNCTION(memoize) 
 {
-#ifdef HAVE_MEMOIZE_MEMORY
 	ALLOC_HASHTABLE(MEMOIZE_G(store));
 	return zend_hash_init(MEMOIZE_G(store), 4, NULL, (dtor_func_t)ZVAL_PTR_DTOR, 0);
-#endif
 }
 /* }}} */
+#endif
 
 /* {{{ PHP_RSHUTDOWN_FUNCTION
  */
