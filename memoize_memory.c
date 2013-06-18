@@ -16,45 +16,38 @@
   +----------------------------------------------------------------------+
 */
 
-#ifndef PHP_MEMOIZE_MEMORY_H
-#define PHP_MEMOIZE_MEMORY_H
-
-#define MEMOIZE_MEMORY_EXTVER "0.0.1-dev"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #include "php.h"
-#include "php_ini.h"
+#include "php_memoize.h"
+#include "php_memoize_storage.h"
 
-#ifdef HAVE_CONFIG_H
-# include "config.h"
-#endif
+memoize_storage_module memoize_storage_module_memory = {
+	MEMOIZE_STORAGE_MODULE(memory)
+};
 
-#ifdef ZTS
-# include "TSRM.h"
-#endif
+/* {{{ MEMOIZE_GET_FUNC(memory)
+*/
+MEMOIZE_GET_FUNC(memory)
+{
+	zval **entry;
+	if (zend_hash_find(MEMOIZE_G(store), key, strlen(key) + 1, (void **)&entry) == SUCCESS) {
+		zval_ptr_dtor(value);
+		*value = *entry;
+		Z_ADDREF_PP(value);
+		return SUCCESS;
+	}
 
-#include "ext/memoize/php_memoize.h"
-#include "ext/memoize/php_memoize_storage.h"
+	return FAILURE;
+}
+/* }}} */
 
-/* Hook into memoize module */
-extern memoize_storage_module memoize_storage_module_memory;
-#define memoize_storage_module_memory_ptr &memoize_storage_module_memory
-
-/* Normal PHP entry */
-extern zend_module_entry memoize_memory_module_entry;
-#define phpext_memoize_storage_memory_ptr &memoize_memory_module_entry
-
-MEMOIZE_STORAGE_FUNCS(memory);
-
-ZEND_BEGIN_MODULE_GLOBALS(memoize_memory)
-	HashTable *store;
-ZEND_END_MODULE_GLOBALS(memoize_memory)
-extern ZEND_DECLARE_MODULE_GLOBALS(memoize_memory)
-
-#ifdef ZTS
-#define MEMOIZE_MEMORY_G(v) TSRMG(memoize_memory_globals_id, zend_memoize_memory_globals *, v)
-#else
-#define MEMOIZE_MEMORY_G(v) (memoize_memory_globals.v)
-#endif
-
-#endif
-
+/* {{{ MEMOIZE_SET_FUNC(memory) */
+MEMOIZE_SET_FUNC(memory)
+{
+	Z_ADDREF_P(value);
+	return zend_hash_update(MEMOIZE_G(store), key, strlen(key) + 1, (void *)&value, sizeof(zval *), NULL);
+}
+/* }}} */

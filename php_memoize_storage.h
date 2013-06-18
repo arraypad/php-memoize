@@ -19,8 +19,6 @@
 #ifndef _PHP_MEMOIZE_STORAGE_H_
 #define _PHP_MEMOIZE_STORAGE_H_
 
-#include "php_memoize.h"
-
 /* Storage function arguments */
 #define MEMOIZE_GET_ARGS	char *key, zval **value TSRMLS_DC
 #define MEMOIZE_SET_ARGS	char *key, zval *value TSRMLS_DC

@@ -2,7 +2,13 @@ Introduction
 =========
 php-memoize is a PHP extension which transparently caches PHP functions, much like [Perl's Memoize module](http://perldoc.perl.org/Memoize.html).
 
-It uses APC or memcached for the caching, so values can persist between requests.
+It comes with the following storage modules which can be enabled at compile time:
+
+- **memory**: Simple per-request module with no dependencies
+- **memcached**: Uses [libmemcached](http://libmemcached.org/libMemcached.html) or the [memcached PHP extension](http://pecl.php.net/package/memcached)
+- **apc**: Uses the [APC PHP extension](http://pecl.php.net/package/apc)
+
+It also provides a simple interface (`php_memoize_storage.h`) if you want to define your own storage modules as PHP extensions.
 
 Usage
 =====
@@ -69,6 +75,11 @@ All of the below ini settings can be changed at any time (PHP_INI_ALL).
 	<tr>
 		<td>memoize.memcached.servers</td>
 		<td>String</td>
-		<td>A comma-separated list of memcached servers to use (e.g. "127.0.0.1:11211,10.0.2.2:11211"). This is only used if a connection hasn't been supplied by memoize_memcached_set_connection().</td>
+		<td>A [libmemcached configuration string](http://docs.libmemcached.org/libmemcached_configuration.html) (e.g. "--SERVER=127.0.0.1 --SERVER=10.0.2.2:22122"). This is only used if a connection hasn't been supplied by memoize_memcached_set_connection().</td>
 	</tr>
 </table>
+
+Installation
+============
+
+See [Compiling shared PECL extensions with phpize](http://www.php.net/manual/en/install.pecl.phpize.php) for general instructions. The available configure options can be listed with `configure --help`.

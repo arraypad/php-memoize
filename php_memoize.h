@@ -12,7 +12,7 @@
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
-  | Author:                                                              |
+  | Author: Arpad Ray <arpad@php.net>                                    |
   +----------------------------------------------------------------------+
 */
 
@@ -21,7 +21,11 @@
 #ifndef PHP_MEMOIZE_H
 #define PHP_MEMOIZE_H
 
-#define MEMOIZE_EXTVER "0.0.1-dev"
+#define MEMOIZE_EXTVER "0.1.0-dev"
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #include "php_memoize_storage.h"
 
@@ -42,11 +46,15 @@ extern zend_module_entry memoize_module_entry;
 
 PHP_MINIT_FUNCTION(memoize);
 PHP_MSHUTDOWN_FUNCTION(memoize);
+PHP_RINIT_FUNCTION(memoize);
 PHP_RSHUTDOWN_FUNCTION(memoize);
 PHP_MINFO_FUNCTION(memoize);
-
 PHP_FUNCTION(memoize);
 PHP_FUNCTION(memoize_call);
+
+#ifdef HAVE_MEMOIZE_MEMCACHED
+	PHP_FUNCTION(memoize_memcached_set_connection);
+#endif
 
 extern PHP_MEMOIZE_API int memoize_register_storage_module(memoize_storage_module *ptr);
 
@@ -66,7 +74,44 @@ ZEND_BEGIN_MODULE_GLOBALS(memoize)
 	char *cache_namespace;
 	char *storage_module;
 	long default_ttl;
+
+#ifdef HAVE_MEMOIZE_MEMORY
+	HashTable *store;
+#endif
+
+#ifdef HAVE_MEMOIZE_MEMCACHED
+	zval *user_connection;
+#endif
+
+#ifdef HAVE_LIBMEMCACHED
+	char *servers;
+	struct memcached_st *memc;
+#endif
 ZEND_END_MODULE_GLOBALS(memoize)
+
+ZEND_EXTERN_MODULE_GLOBALS(memoize);
+
+#ifdef HAVE_MEMOIZE_MEMORY
+	extern memoize_storage_module memoize_storage_module_memory;
+#	define memoize_storage_module_memory_ptr &memoize_storage_module_memory
+	MEMOIZE_STORAGE_FUNCS(memory);
+#endif
+
+#ifdef HAVE_MEMOIZE_APC
+	extern memoize_storage_module memoize_storage_module_apc;
+#	define memoize_storage_module_apc_ptr &memoize_storage_module_apc
+	MEMOIZE_STORAGE_FUNCS(apc);
+	extern PHP_FUNCTION(memoize_memcached_set_connection);
+#endif
+
+#ifdef HAVE_MEMOIZE_MEMCACHED
+	extern memoize_storage_module memoize_storage_module_memcached;
+#	define memoize_storage_module_memcached_ptr &memoize_storage_module_memcached
+	MEMOIZE_STORAGE_FUNCS(memcached);
+#	ifdef HAVE_LIBMEMCACHED
+#		include <libmemcached/memcached.h>
+#	endif
+#endif
 
 #ifdef ZTS
 #define MEMOIZE_G(v) TSRMG(memoize_globals_id, zend_memoize_globals *, v)
@@ -82,7 +127,6 @@ ZEND_END_MODULE_GLOBALS(memoize)
 
 
 #endif	/* PHP_MEMOIZE_H */
-
 
 /*
  * Local variables:

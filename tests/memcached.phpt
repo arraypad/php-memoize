@@ -1,10 +1,8 @@
 --TEST--
 memoize - memcached
---SKIPIF--
-<?php if (!extension_loaded("memcached") || !extension_loaded("memoize_memcached")) { die("skip"); } ?>
 --INI--
 memoize.storage_module=memcached
-memoize.memcached.servers=127.0.0.1:11211
+memoize.memcached.servers="--SERVER=127.0.0.1"
 --FILE--
 <?php
 

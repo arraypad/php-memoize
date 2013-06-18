@@ -16,13 +16,18 @@
   +----------------------------------------------------------------------+
 */
 
-#include "php_memoize_memcached.h"
-#include "ext/standard/info.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include "php.h"
+#include "php_memoize.h"
+#include "php_memoize_storage.h"
 
 #ifdef HAVE_LIBMEMCACHED
+# include <libmemcached/memcached.h>
 # include <ext/standard/php_smart_str.h>
 # include <ext/standard/php_var.h>
-# include <libmemcached/memcached.h>
 # include <stdio.h>
 # if defined(HAVE_INTTYPES_H)
 #  include <inttypes.h>
@@ -35,64 +40,38 @@ memoize_storage_module memoize_storage_module_memcached = {
 	MEMOIZE_STORAGE_MODULE(memcached)
 };
 
-/* {{{ Globals */
-ZEND_DECLARE_MODULE_GLOBALS(memoize_memcached);
-
-static PHP_GINIT_FUNCTION(memoize_memcached) 
-{
-	memoize_memcached_globals->user_connection = NULL;
-#ifdef HAVE_LIBMEMCACHED
-	memoize_memcached_globals->servers = NULL;
-	memoize_memcached_globals->memc = NULL;
-#endif
-}
-/* }}} */
-
 /* {{{ libmemcached */
 #ifdef HAVE_LIBMEMCACHED
 static int _memoize_memcached_connect(TSRMLS_D) /* {{{ */
 {
-	char *servers, *server_last, *server_part;
+	char *server_last = NULL, *server_part = NULL, *server = NULL;
 	memcached_return status;
-	char *server;
 	int ret = SUCCESS;
 
-	if (MEMOIZE_MEMCACHED_G(memc)) {
+	if (MEMOIZE_G(memc)) {
 		return SUCCESS;
 	}
 
-	if (!MEMOIZE_MEMCACHED_G(servers)) {
+	if (!MEMOIZE_G(servers)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "No memcached servers defined in memoize.memcached.servers");
 		return FAILURE;
 	}
 
-	/* create memc */
-	MEMOIZE_MEMCACHED_G(memc) = memcached_create(NULL);
+	MEMOIZE_G(memc) = memcached(MEMOIZE_G(servers), strlen(MEMOIZE_G(servers)));
 
-	/* add servers */
-	servers = estrdup(MEMOIZE_MEMCACHED_G(servers));
-	server_part = php_strtok_r(servers, ",", &server_last);
-	while (server_part != NULL) {
-		server = php_trim(server_part, strlen(server_part), NULL, 0, NULL, 3 TSRMLS_CC);
-		if (server) {
-			char host[256], *server_dup;
-			int has_port, port = 11211;
+	if (!MEMOIZE_G(memc)) {
+		char error_buffer[1024];
 
-			has_port = sscanf(server, "%[^:]:%d", host, &port) == 2;
-			server_dup = estrdup(has_port ? host : server);
-			status = memcached_server_add(MEMOIZE_MEMCACHED_G(memc), server_dup, port);
-			if (status != MEMCACHED_SUCCESS) {
-				php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failed to add memcached server %s", server);
-				ret = FAILURE;
-			}
-			efree(server_dup);
-			efree(server);
+		if (libmemcached_check_configuration(MEMOIZE_G(servers), strlen(MEMOIZE_G(servers)), error_buffer, sizeof(error_buffer)) != MEMCACHED_SUCCESS) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "memoize.memcached.servers configuration error %s", error_buffer);
+		} else {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Failed to connect to servers defined in memoize.memcached.servers");
 		}
-		server_part = php_strtok_r(NULL, ",", &server_last);
-	}
-	efree(servers);
 
-	return ret;
+		return FAILURE;
+	}
+
+	return SUCCESS;
 }
 /* }}} */
 
@@ -109,7 +88,7 @@ static int _memoize_memcached_get(char *key, zval **value TSRMLS_DC) /* {{{ */
 		return FAILURE;
 	}
 
-	data = memcached_get(MEMOIZE_MEMCACHED_G(memc), key, strlen(key), &data_len, &flags, &rc);
+	data = memcached_get(MEMOIZE_G(memc), key, strlen(key), &data_len, &flags, &rc);
 
 	if (rc != MEMCACHED_SUCCESS) {
 		return FAILURE;
@@ -148,7 +127,7 @@ static int _memoize_memcached_set(char *key, zval *value, time_t expiry TSRMLS_D
 		return FAILURE;
 	}
 
-	rc = memcached_set(MEMOIZE_MEMCACHED_G(memc), key, strlen(key), buf.c, strlen(buf.c), expiry, (uint32_t)0);
+	rc = memcached_set(MEMOIZE_G(memc), key, strlen(key), buf.c, strlen(buf.c), expiry, (uint32_t)0);
 	smart_str_free(&buf);
 	if (rc == MEMCACHED_SUCCESS || rc == MEMCACHED_BUFFERED) {
 		return SUCCESS;
@@ -160,50 +139,15 @@ static int _memoize_memcached_set(char *key, zval *value, time_t expiry TSRMLS_D
 #endif
 /* }}} */
 
-/* {{{ PHP_INI
- */
-PHP_INI_BEGIN()
-	STD_PHP_INI_ENTRY("memoize.memcached.servers", "", PHP_INI_ALL, OnUpdateString, servers, zend_memoize_memcached_globals, memoize_memcached_globals)
-PHP_INI_END()
-/* }}} */
-
-/* {{{ PHP_MINIT_FUNCTION(memoize_memcached) */
-PHP_MINIT_FUNCTION(memoize_memcached) 
-{
-	MEMOIZE_STORAGE_REGISTER(memcached);
-	REGISTER_INI_ENTRIES();
-	return SUCCESS;
-}
-/* }}} */
-
-/* {{{ PHP_RSHUTDOWN_FUNCTION(memoize_memcached) */
-PHP_RSHUTDOWN_FUNCTION(memoize_memcached) 
-{
-	if (MEMOIZE_MEMCACHED_G(user_connection)) {
-		zval_ptr_dtor(&MEMOIZE_MEMCACHED_G(user_connection));
-		MEMOIZE_MEMCACHED_G(user_connection) = NULL;
-	}
-
-#ifdef HAVE_LIBMEMCACHED
-	if (MEMOIZE_MEMCACHED_G(memc)) {
-		memcached_free(MEMOIZE_MEMCACHED_G(memc));
-		MEMOIZE_MEMCACHED_G(memc) = NULL;
-	}
-#endif
-
-	return SUCCESS;
-}
-/* }}} */
-
 /* {{{ MEMOIZE_GET_FUNC(memcached)
 */
 MEMOIZE_GET_FUNC(memcached)
 {
 	int ret = FAILURE;
 	zval *func, *key_zv;
-	zval *params[1];
-
-	if (MEMOIZE_MEMCACHED_G(user_connection)) {
+	zval *params[1] = { NULL };
+	
+	if (MEMOIZE_G(user_connection)) {
 		MAKE_STD_ZVAL(key_zv);
 		ZVAL_STRING(key_zv, key, 1);
 
@@ -211,7 +155,7 @@ MEMOIZE_GET_FUNC(memcached)
 
 		MAKE_STD_ZVAL(func);
 		ZVAL_STRING(func, "get", 1);
-		ret = call_user_function(NULL, &MEMOIZE_MEMCACHED_G(user_connection), func, *value, 1, params TSRMLS_CC);
+		ret = call_user_function(NULL, &MEMOIZE_G(user_connection), func, *value, 1, params TSRMLS_CC);
 		zval_ptr_dtor(&func);
 		zval_ptr_dtor(&key_zv);
 
@@ -244,7 +188,7 @@ MEMOIZE_SET_FUNC(memcached)
 		expiry = time(NULL) + default_ttl;
 	}
 
-	if (MEMOIZE_MEMCACHED_G(user_connection)) {
+	if (MEMOIZE_G(user_connection)) {
 		MAKE_STD_ZVAL(key_zv);
 		ZVAL_STRING(key_zv, key, 1);
 
@@ -257,7 +201,7 @@ MEMOIZE_SET_FUNC(memcached)
 
 		MAKE_STD_ZVAL(func);
 		ZVAL_STRING(func, "set", 1);
-		ret = call_user_function(NULL, &MEMOIZE_MEMCACHED_G(user_connection), func, &retval, 3, params TSRMLS_CC);
+		ret = call_user_function(NULL, &MEMOIZE_G(user_connection), func, &retval, 3, params TSRMLS_CC);
 		zval_ptr_dtor(&func);
 		zval_ptr_dtor(&key_zv);
 		zval_ptr_dtor(&expiry_zv);
@@ -270,16 +214,6 @@ MEMOIZE_SET_FUNC(memcached)
 #endif
 
 	return ret;
-}
-/* }}} */
-
-/* {{{ PHP_MINFO_FUNCTION(memoize_memcached) */
-PHP_MINFO_FUNCTION(memoize_memcached)
-{	
-	php_info_print_table_start();
-	php_info_print_table_row(2, "memoize_memcached storage", "enabled");
-	php_info_print_table_row(2, "memoize_memcached version", MEMOIZE_MEMCACHED_EXTVER);
-	php_info_print_table_end();
 }
 /* }}} */
 
@@ -304,33 +238,7 @@ PHP_FUNCTION(memoize_memcached_set_connection)
 	}
 
 	Z_ADDREF_P(obj);
-	MEMOIZE_MEMCACHED_G(user_connection) = obj;
+	MEMOIZE_G(user_connection) = obj;
 	RETURN_TRUE;
 }
 /* }}} */
-
-static zend_function_entry memoize_memcached_functions[] = {
-	PHP_FE(memoize_memcached_set_connection,	NULL)
-	{NULL, NULL, NULL}
-};
-
-zend_module_entry memoize_memcached_module_entry = {
-	STANDARD_MODULE_HEADER,
-	"memoize_memcached",
-	memoize_memcached_functions,
-	PHP_MINIT(memoize_memcached),
-	NULL,
-	NULL,
-	PHP_RSHUTDOWN(memoize_memcached),
-	PHP_MINFO(memoize_memcached),
-	MEMOIZE_MEMCACHED_EXTVER,
-	PHP_MODULE_GLOBALS(memoize_memcached),
-	PHP_GINIT(memoize_memcached),
-	NULL,
-	NULL,
-	STANDARD_MODULE_PROPERTIES_EX
-};
-
-#ifdef COMPILE_DL_MEMOIZE_MEMCACHED
-ZEND_GET_MODULE(memoize_memcached)
-#endif

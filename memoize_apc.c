@@ -16,22 +16,17 @@
   +----------------------------------------------------------------------+
 */
 
-#include "php_memoize_apc.h"
-#include "ext/memoize/php_memoize.h"
-#include "ext/standard/info.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include "php.h"
+#include "php_memoize.h"
+#include "php_memoize_storage.h"
 
 memoize_storage_module memoize_storage_module_apc = {
 	MEMOIZE_STORAGE_MODULE(apc)
 };
-
-
-/* {{{ PHP_MINIT_FUNCTION(memoize_apc) */
-PHP_MINIT_FUNCTION(memoize_apc) 
-{
-	MEMOIZE_STORAGE_REGISTER(apc);
-	return SUCCESS;
-}
-/* }}} */
 
 /* {{{ MEMOIZE_GET_FUNC(apc) */
 MEMOIZE_GET_FUNC(apc)
@@ -71,7 +66,7 @@ MEMOIZE_SET_FUNC(apc)
 	ZVAL_STRING(key_zv, key, 1);
 
 	MAKE_STD_ZVAL(expiry_zv);
-	ZVAL_LONG(expiry_zv, INI_INT("memoize.default_ttl"));
+	ZVAL_LONG(expiry_zv, MEMOIZE_G(default_ttl));
 
 	params[0] = key_zv;
 	params[1] = value;
@@ -87,34 +82,3 @@ MEMOIZE_SET_FUNC(apc)
 	return ret;
 }
 /* }}} */
-
-/* {{{ PHP_MINFO_FUNCTION(memoize_apc) */
-PHP_MINFO_FUNCTION(memoize_apc)
-{	
-	php_info_print_table_start();
-	php_info_print_table_row(2, "memoize_apc storage", "enabled");
-	php_info_print_table_row(2, "memoize_apc version", MEMOIZE_APC_EXTVER);
-	php_info_print_table_end();
-}
-/* }}} */
-
-static zend_function_entry memoize_apc_functions[] = {
-	{NULL, NULL, NULL}
-};
-
-zend_module_entry memoize_apc_module_entry = {
-	STANDARD_MODULE_HEADER,
-	"memoize_apc",
-	memoize_apc_functions,
-	PHP_MINIT(memoize_apc),
-	NULL,
-	NULL,
-	NULL,
-	PHP_MINFO(memoize_apc),
-	MEMOIZE_APC_EXTVER,
-	STANDARD_MODULE_PROPERTIES
-};
-
-#ifdef COMPILE_DL_MEMOIZE_APC
-ZEND_GET_MODULE(memoize_apc)
-#endif

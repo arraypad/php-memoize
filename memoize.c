@@ -26,6 +26,7 @@
 #include "ext/standard/php_var.h"
 #include "ext/standard/php_smart_str.h"
 #include "ext/standard/md5.h"
+
 #include "php_memoize.h"
 
 /* {{{ memoize_functions[]
@@ -33,6 +34,9 @@
 const zend_function_entry memoize_functions[] = {
 	PHP_FE(memoize,	NULL)
 	PHP_FE(memoize_call, NULL)
+#ifdef HAVE_MEMOIZE_MEMCACHED
+	PHP_FE(memoize_memcached_set_connection, NULL)
+#endif
 	{NULL, NULL, NULL}
 };
 /* }}} */
@@ -45,6 +49,19 @@ static PHP_GINIT_FUNCTION(memoize)
 	memoize_globals->cache_namespace = NULL;
 	memoize_globals->storage_module = NULL;
 	memoize_globals->default_ttl = 0;
+
+#ifdef HAVE_MEMOIZE_MEMORY
+	memoize_globals->store = NULL;
+#endif
+
+#ifdef HAVE_MEMOIZE_MEMCACHED
+	memoize_globals->user_connection = NULL;
+#endif
+
+#ifdef HAVE_LIBMEMCACHED
+	memoize_globals->servers = NULL;
+	memoize_globals->memc = NULL;
+#endif
 }
 /* }}} */
 
@@ -58,7 +75,7 @@ zend_module_entry memoize_module_entry = {
 	memoize_functions,
 	PHP_MINIT(memoize),
 	PHP_MSHUTDOWN(memoize),
-	NULL,
+	PHP_RINIT(memoize),
 	PHP_RSHUTDOWN(memoize),
 	PHP_MINFO(memoize),
 	MEMOIZE_EXTVER,
@@ -127,6 +144,10 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("memoize.cache_namespace", "", PHP_INI_ALL, OnUpdateString, cache_namespace, zend_memoize_globals, memoize_globals)
 	STD_PHP_INI_ENTRY("memoize.storage_module", "memory", PHP_INI_ALL, OnUpdateString, storage_module, zend_memoize_globals, memoize_globals)
 	STD_PHP_INI_ENTRY("memoize.default_ttl", "3600", PHP_INI_ALL, OnUpdateLong, default_ttl, zend_memoize_globals, memoize_globals)
+
+#ifdef HAVE_MEMOIZE_MEMCACHED
+	STD_PHP_INI_ENTRY("memoize.memcached.servers", "", PHP_INI_ALL, OnUpdateString, servers, zend_memoize_globals, memoize_globals)
+#endif
 PHP_INI_END()
 /* }}} */
 
@@ -135,6 +156,19 @@ PHP_INI_END()
 PHP_MINIT_FUNCTION(memoize)
 {
 	REGISTER_INI_ENTRIES();
+
+#ifdef HAVE_MEMOIZE_MEMORY
+	MEMOIZE_STORAGE_REGISTER(memory);
+#endif
+
+#ifdef HAVE_MEMOIZE_APC
+	MEMOIZE_STORAGE_REGISTER(apc);
+#endif
+
+#ifdef HAVE_MEMOIZE_MEMCACHED
+	MEMOIZE_STORAGE_REGISTER(memcached);
+#endif
+
 	return SUCCESS;
 }
 /* }}} */
@@ -145,6 +179,17 @@ PHP_MSHUTDOWN_FUNCTION(memoize)
 {
 	UNREGISTER_INI_ENTRIES();
 	return SUCCESS;
+}
+/* }}} */
+
+
+/* {{{ PHP_RINIT_FUNCTION(memoize) */
+PHP_RINIT_FUNCTION(memoize) 
+{
+#ifdef HAVE_MEMOIZE_MEMORY
+	ALLOC_HASHTABLE(MEMOIZE_G(store));
+	return zend_hash_init(MEMOIZE_G(store), 4, NULL, (dtor_func_t)ZVAL_PTR_DTOR, 0);
+#endif
 }
 /* }}} */
 
@@ -161,6 +206,25 @@ PHP_RSHUTDOWN_FUNCTION(memoize)
 
 	zend_hash_apply(EG(function_table), (apply_func_t) memoize_remove_handler_functions TSRMLS_CC);
 
+#ifdef HAVE_MEMOIZE_MEMORY
+	zend_hash_destroy(MEMOIZE_G(store));
+	FREE_HASHTABLE(MEMOIZE_G(store));
+#endif
+
+#ifdef HAVE_MEMOIZE_MEMCACHED
+	if (MEMOIZE_G(user_connection)) {
+		zval_ptr_dtor(&MEMOIZE_G(user_connection));
+		MEMOIZE_G(user_connection) = NULL;
+	}
+#endif
+
+#ifdef HAVE_LIBMEMCACHED
+	if (MEMOIZE_G(memc)) {
+		memcached_free(MEMOIZE_G(memc));
+		MEMOIZE_G(memc) = NULL;
+	}
+#endif
+
 	return SUCCESS;
 }
 /* }}} */
@@ -172,6 +236,15 @@ PHP_MINFO_FUNCTION(memoize)
 	php_info_print_table_start();
 	php_info_print_table_header(2, "memoize support", "enabled");
 	php_info_print_table_row(2, "memoize version", MEMOIZE_EXTVER);
+
+#ifdef HAVE_MEMOIZE_MEMORY
+	php_info_print_table_row(2, "memory storage module", "enabled");
+#endif
+
+#ifdef HAVE_MEMOIZE_APC
+	php_info_print_table_row(2, "APC storage module", "enabled");
+#endif
+
 	php_info_print_table_end();
 }
 /* }}} */

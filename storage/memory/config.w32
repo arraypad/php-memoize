@@ -1,9 +1,0 @@
-// $Id$
-// vim:ft=javascript
-
-ARG_ENABLE("memoize-memory", "enable memoize memory storage module", "no");
-
-if (PHP_MEMOIZE_MEMORY != "no") {
-  EXTENSION("memoize_memory", "memoize_memory.c");
-  ADD_EXTENSION_DEP("memoize_memory", "memoize");
-}
