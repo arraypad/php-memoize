@@ -48,7 +48,7 @@ if test "$PHP_MEMOIZE" != "no"; then
 			PHP_ADD_INCLUDE($PHP_MEMOIZE_MEMCACHED/include)
 			PHP_ADD_LIBRARY_WITH_PATH(memcached, $PHP_MEMOIZE_MEMCACHED/$PHP_LIBDIR, MEMOIZE_SHARED_LIBADD)
 			PHP_SUBST(MEMOIZE_SHARED_LIBADD)
-			PHP_DEF_HAVE(libmemcached)
+			PHP_DEF_HAVE(memoize_libmemcached)
 		fi
 	fi
 

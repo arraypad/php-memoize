@@ -2,9 +2,40 @@
 // vim:ft=javascript
 
 ARG_ENABLE("memoize", "enable memoize support", "no");
+ARG_ENABLE("memoize-apc", "enable memoize APC storage module", "no");
+ARG_WITH("memoize-memcached", "enable memoize memcached storage module", "no");
 
 if (PHP_MEMOIZE != "no") {
+	if (PHP_MEMOIZE_APC != "no") {
+		ADD_EXTENSION_DEP("memoize", "apc");
+		AC_DEFINE("HAVE_MEMOIZE_APC", 1, "memoize APC storage module enabled");
+		HAVE_APC = 1;
+	}
+
+	if (PHP_MEMOIZE_MEMCACHED != "no") {
+		ADD_EXTENSION_DEP("memoize", "memcached", true);
+		AC_DEFINE("HAVE_MEMOIZE_MEMCACHED", 1, "memoize memcached storage module enabled");
+		HAVE_MEMCACHED = 1;
+
+		if (CHECK_LIB("memcached.lib", "memcached", PHP_MEMOIZE) && !CHECK_HEADER_ADD_INCLUDE("libmemcached/memcached.h", "CFLAGS_MEMCACHED")) { 
+			AC_DEFINE("HAVE_MEMOIZE_LIBMEMCACHED", 1, "memoize libmemcached support");
+		} else {
+			STDOUT.WriteLine("memoize: memcached library not found. The memcached storage module for memoize will only be usable with the memcached extension via memoize_memcached_set_connection.");
+		}
+	}
+
 	EXTENSION("memoize", "memoize.c");
+
+	ADD_SOURCES("memoize_memory.c");
+
+	if (HAVE_APC) {
+		ADD_SOURCES("memoize_apc.c");
+	}
+
+	if (HAVE_MEMCACHED) {
+		ADD_SOURCES("memoize_memcached.c");
+	}
+
 	PHP_INSTALL_HEADERS("", "ext/memoize")
 }
 

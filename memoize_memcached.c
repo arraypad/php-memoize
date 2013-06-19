@@ -24,7 +24,7 @@
 #include "php_memoize.h"
 #include "php_memoize_storage.h"
 
-#ifdef HAVE_LIBMEMCACHED
+#ifdef HAVE_MEMOIZE_LIBMEMCACHED
 # include <libmemcached/memcached.h>
 # include <ext/standard/php_smart_str.h>
 # include <ext/standard/php_var.h>
@@ -41,7 +41,7 @@ memoize_storage_module memoize_storage_module_memcached = {
 };
 
 /* {{{ libmemcached */
-#ifdef HAVE_LIBMEMCACHED
+#ifdef HAVE_MEMOIZE_LIBMEMCACHED
 static int _memoize_memcached_connect(TSRMLS_D) /* {{{ */
 {
 	char *server_last = NULL, *server_part = NULL, *server = NULL;
@@ -168,7 +168,7 @@ MEMOIZE_GET_FUNC(memcached)
 		return ret;
 	}
 
-#ifdef HAVE_LIBMEMCACHED
+#ifdef HAVE_MEMOIZE_LIBMEMCACHED
 	return _memoize_memcached_get(key, value TSRMLS_CC);
 #endif
 
@@ -209,7 +209,7 @@ MEMOIZE_SET_FUNC(memcached)
 		return ret;
 	}
 
-#ifdef HAVE_LIBMEMCACHED
+#ifdef HAVE_MEMOIZE_LIBMEMCACHED
 	return _memoize_memcached_set(key, value, expiry TSRMLS_CC);
 #endif
 

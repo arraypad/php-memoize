@@ -58,7 +58,7 @@ static PHP_GINIT_FUNCTION(memoize)
 	memoize_globals->user_connection = NULL;
 #endif
 
-#ifdef HAVE_LIBMEMCACHED
+#ifdef HAVE_MEMOIZE_LIBMEMCACHED
 	memoize_globals->servers = NULL;
 	memoize_globals->memc = NULL;
 #endif
@@ -222,7 +222,7 @@ PHP_RSHUTDOWN_FUNCTION(memoize)
 	}
 #endif
 
-#ifdef HAVE_LIBMEMCACHED
+#ifdef HAVE_MEMOIZE_LIBMEMCACHED
 	if (MEMOIZE_G(memc)) {
 		memcached_free(MEMOIZE_G(memc));
 		MEMOIZE_G(memc) = NULL;

@@ -83,7 +83,7 @@ ZEND_BEGIN_MODULE_GLOBALS(memoize)
 	zval *user_connection;
 #endif
 
-#ifdef HAVE_LIBMEMCACHED
+#ifdef HAVE_MEMOIZE_LIBMEMCACHED
 	char *servers;
 	struct memcached_st *memc;
 #endif
@@ -108,7 +108,7 @@ ZEND_EXTERN_MODULE_GLOBALS(memoize);
 	extern memoize_storage_module memoize_storage_module_memcached;
 #	define memoize_storage_module_memcached_ptr &memoize_storage_module_memcached
 	MEMOIZE_STORAGE_FUNCS(memcached);
-#	ifdef HAVE_LIBMEMCACHED
+#	ifdef HAVE_MEMOIZE_LIBMEMCACHED
 #		include <libmemcached/memcached.h>
 #	endif
 #endif
