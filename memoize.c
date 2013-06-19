@@ -47,6 +47,7 @@ ZEND_DECLARE_MODULE_GLOBALS(memoize);
 static PHP_GINIT_FUNCTION(memoize)
 {
 	memoize_globals->internal_functions = NULL;
+	memoize_globals->ttls = NULL;
 	memoize_globals->cache_namespace = NULL;
 	memoize_globals->storage_module = NULL;
 	memoize_globals->default_ttl = 0;
@@ -207,6 +208,12 @@ PHP_RSHUTDOWN_FUNCTION(memoize)
 		zend_hash_destroy(MEMOIZE_G(internal_functions));
 		FREE_HASHTABLE(MEMOIZE_G(internal_functions));
 		MEMOIZE_G(internal_functions) = NULL;
+	}
+
+	if (MEMOIZE_G(ttls)) {
+		zend_hash_destroy(MEMOIZE_G(ttls));
+		FREE_HASHTABLE(MEMOIZE_G(ttls));
+		MEMOIZE_G(ttls) = NULL;
 	}
 
 	zend_hash_apply(EG(function_table), (apply_func_t) memoize_remove_handler_functions TSRMLS_CC);
@@ -401,8 +408,22 @@ PHP_FUNCTION(memoize_call)
 		if (call_user_function(&fe->common.scope->function_table, obj_pp, callable, *return_value_ptr, argc, (argc ? *args : NULL) TSRMLS_CC) == FAILURE) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to call memoized function %s.", fname);
 		} else {
+			long ttl = 0;
+
 			/* store result in storage mod */
-			mod->set(key, *return_value_ptr TSRMLS_CC);
+
+			if (MEMOIZE_G(ttls)) {
+				/* check for custom TTL */
+				char *ttl_key = NULL;
+				int ttl_key_len = spprintf(&ttl_key, 0, "%p", (void *)fe);
+				long *custom_ttl;
+
+				if (zend_hash_find(MEMOIZE_G(ttls), ttl_key, ttl_key_len + 1, (void **)&custom_ttl) == SUCCESS) {
+					ttl = *custom_ttl;
+				}
+			}
+
+			mod->set(key, *return_value_ptr, ttl TSRMLS_CC);
 		}
 		zval_ptr_dtor(&callable);
 
@@ -420,7 +441,7 @@ PHP_FUNCTION(memoize_call)
 }
 /* }}} */
 
-/* {{{ proto bool memoize(string fname)
+/* {{{ proto bool memoize(string fname [, int ttl])
    Memoizes the given function */
 PHP_FUNCTION(memoize)
 {
@@ -428,6 +449,7 @@ PHP_FUNCTION(memoize)
 	char *fname = NULL, *new_fname = NULL;
 	int fname_len;
 	size_t new_fname_len;
+	long ttl = 0;
 	zend_function *fe, *dfe, func, *new_dfe;
 	HashTable *function_table = EG(function_table);
 	memoize_storage_module *mod = NULL;
@@ -438,7 +460,7 @@ PHP_FUNCTION(memoize)
 
 	/* parse argument */
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &callable) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|l", &callable, &ttl) == FAILURE) {
 		return;
 	}
 	
@@ -551,6 +573,19 @@ PHP_FUNCTION(memoize)
 		mem_func.function = func;
 		mem_func.function_table = function_table;
 		zend_hash_add(MEMOIZE_G(internal_functions), fname, fname_len + 1, (void*)&mem_func, sizeof(memoize_internal_function), NULL);
+	}
+
+	/* store custom TTL */
+	if (ttl) {
+		char *ttl_key = NULL;
+		int ttl_key_len = spprintf(&ttl_key, 0, "%p", (void *)fe);
+
+		if (!MEMOIZE_G(ttls)) {
+			ALLOC_HASHTABLE(MEMOIZE_G(ttls));
+			zend_hash_init(MEMOIZE_G(ttls), 4, NULL, NULL, 0);
+		}
+
+		zend_hash_add(MEMOIZE_G(ttls), ttl_key, ttl_key_len + 1, (void *)&ttl, sizeof(long), NULL);
 	}
 
 	new_fname_len = spprintf(&new_fname, 0, "%s%s", fname, MEMOIZE_FUNC_SUFFIX);

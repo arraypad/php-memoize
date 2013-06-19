@@ -21,7 +21,7 @@
 
 /* Storage function arguments */
 #define MEMOIZE_GET_ARGS	char *key, zval **value TSRMLS_DC
-#define MEMOIZE_SET_ARGS	char *key, zval *value TSRMLS_DC
+#define MEMOIZE_SET_ARGS	char *key, zval *value, long ttl TSRMLS_DC
 
 /* {{{ typedef struct _php_memoize_storage_module */
 typedef struct _memoize_storage_module {

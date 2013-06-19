@@ -182,10 +182,13 @@ MEMOIZE_SET_FUNC(memcached)
 	int ret = FAILURE;
 	time_t expiry = 0;
 	zval *func, *key_zv, *expiry_zv, retval, *params[3];
-	long default_ttl = INI_INT("memoize.default_ttl");
 
-	if (default_ttl) {
-		expiry = time(NULL) + default_ttl;
+	if (!ttl) {
+		ttl = MEMOIZE_G(default_ttl);
+	}
+
+	if (ttl) {
+		expiry = time(NULL) + ttl;
 	}
 
 	if (MEMOIZE_G(user_connection)) {

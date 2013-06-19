@@ -73,6 +73,7 @@ int memoize_remove_handler_functions(zend_function *fe TSRMLS_DC);
 
 ZEND_BEGIN_MODULE_GLOBALS(memoize)
 	HashTable *internal_functions;
+	HashTable *ttls;
 	char *cache_namespace;
 	char *storage_module;
 	long default_ttl;

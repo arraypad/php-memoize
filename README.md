@@ -4,7 +4,7 @@ php-memoize is a PHP extension which transparently caches PHP functions, much li
 
 It comes with the following storage modules which can be enabled at compile time:
 
-- **memory**: Simple per-request module with no dependencies
+- **memory**: Simple per-request module with no dependencies. Since this is a per-request cache, neither TTLs specified in the `memoize()` call or `memoize.default_ttl` are used.
 - **memcached**: Uses [libmemcached](http://libmemcached.org/libMemcached.html) or the [memcached PHP extension](http://pecl.php.net/package/memcached)
 - **apc**: Uses the [APC PHP extension](http://pecl.php.net/package/apc)
 
@@ -33,11 +33,13 @@ echo my_expensive_function('foo'); // returns "foobar" in 0.0001s
 Functions
 =========
 
-### bool memoize(mixed $callback)
+### bool memoize(mixed $callback [, int $ttl = 0 ])
 
 Registers a function to be memoized. Like the callbacks taken for example by ````call_user_func()````, $callback can be a string containing a function name or an array containing a class or object and a method name.
 
 Unlike normal callbacks, it can refer to methods which aren't callable from this scope (e.g. private methods.) It can also refer to non-static methods as if they were static, so you don't need to have an instance available when you register the method.
+
+The option `$ttl` argument specifies how long calls will be cached for seconds. If not provided or set to 0, the `memoize.default_ttl` ini setting is used.
 
 Returns ````true```` if the function was successfully registered, or false and raises an E_WARNING error otherwise.
 
