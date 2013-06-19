@@ -41,6 +41,10 @@ Unlike normal callbacks, it can refer to methods which aren't callable from this
 
 Returns ````true```` if the function was successfully registered, or false and raises an E_WARNING error otherwise.
 
+### bool memoize_has_storage(string $module_name)
+
+Returns whether the storage module with the given name is available.
+
 ### bool memoize_memcached_set_connection(Memcached $m)
 
 Sets an existing Memcached object to be be used for memoize storage, instead of creating a new connection using the servers defined in ````memoize.memcached.servers````. This function is only available when the memoize_memcached extension is present, and only applicable when ````memoize.storage_module```` is set to "memcached".
