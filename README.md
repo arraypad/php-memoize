@@ -39,7 +39,7 @@ Registers a function to be memoized. Like the callbacks taken for example by ```
 
 Unlike normal callbacks, it can refer to methods which aren't callable from this scope (e.g. private methods.) It can also refer to non-static methods as if they were static, so you don't need to have an instance available when you register the method.
 
-The option `$ttl` argument specifies how long calls will be cached for seconds. If not provided or set to 0, the `memoize.default_ttl` ini setting is used.
+The option `$ttl` argument specifies how long calls will be cached for (in seconds). If not provided or set to 0, the `memoize.default_ttl` ini setting is used.
 
 Returns ````true```` if the function was successfully registered, or false and raises an E_WARNING error otherwise.
 
@@ -49,7 +49,7 @@ Returns whether the storage module with the given name is available.
 
 ### bool memoize_memcached_set_connection(Memcached $m)
 
-Sets an existing Memcached object to be be used for memoize storage, instead of creating a new connection using the servers defined in ````memoize.memcached.servers````. This function is only available when the memoize_memcached extension is present, and only applicable when ````memoize.storage_module```` is set to "memcached".
+Sets an existing Memcached object to be be used for memoize storage, instead of creating a new connection using the servers defined in ````memoize.memcached.servers````. This function is only available when the memcached extension is present, and only applicable when ````memoize.storage_module```` is set to "memcached".
 
 Settings
 ========
@@ -71,7 +71,7 @@ All of the below ini settings can be changed at any time (PHP_INI_ALL).
 	<tr>
 		<td>memoize.default_ttl</td>
 		<td>Integer</td>
-		<td>The number of seconds to store cache entries for (defaults to 3600, one hour.)</td>
+		<td>The default number of seconds to store cache entries for (defaults to 3600, one hour.)</td>
 	</tr>
 </table>
 
