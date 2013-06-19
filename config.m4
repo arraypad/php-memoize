@@ -29,7 +29,7 @@ if test "$PHP_MEMOIZE" != "no"; then
 
 		if test "$PHP_MEMOIZE_MEMCACHED" != "yes"; then
 			if test ! -r "$PHP_MEMOIZE_MEMCACHED/include/libmemcached-1.0/memcached.h"; then
-				AC_MSG_ERROR([Can't find libmemcached headers under "$PHP_LIBMEMCACHED_DIR"])
+				AC_MSG_ERROR([Can't find libmemcached headers under "$PHP_MEMOIZE_MEMCACHED"])
 			fi
 		else
 			for i in /usr /usr/local; do
