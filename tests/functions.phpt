@@ -1,5 +1,7 @@
 --TEST--
 memoize - functions
+--SKIPIF--
+<?php if (!extension_loaded("memoize") || !memoize_has_storage("memory")) { die("skip"); } ?>
 --FILE--
 <?php
 require 'init.inc';

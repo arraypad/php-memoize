@@ -34,6 +34,7 @@
 const zend_function_entry memoize_functions[] = {
 	PHP_FE(memoize,	NULL)
 	PHP_FE(memoize_call, NULL)
+	PHP_FE(memoize_has_storage, NULL)
 #ifdef HAVE_MEMOIZE_MEMCACHED
 	PHP_FE(memoize_memcached_set_connection, NULL)
 #endif
@@ -563,6 +564,28 @@ PHP_FUNCTION(memoize)
 	efree(fname);
 
 	RETURN_TRUE;
+}
+/* }}} */
+
+
+/* {{{ proto mixed memoize_has_storage(string module_name)
+   Returns whether the given storage module is loaded */
+PHP_FUNCTION(memoize_has_storage)
+{
+	char *module_name;
+	int module_len, i;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &module_name, &module_len) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	for (i = 0; i < MEMOIZE_MAX_MODULES; i++) {
+		if (memoize_storage_modules[i] && !strcasecmp(module_name, memoize_storage_modules[i]->name)) {
+			RETURN_TRUE;
+		}
+	}
+
+	RETURN_FALSE;
 }
 /* }}} */
 

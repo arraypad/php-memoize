@@ -49,8 +49,10 @@ PHP_MSHUTDOWN_FUNCTION(memoize);
 PHP_RINIT_FUNCTION(memoize);
 PHP_RSHUTDOWN_FUNCTION(memoize);
 PHP_MINFO_FUNCTION(memoize);
+
 PHP_FUNCTION(memoize);
 PHP_FUNCTION(memoize_call);
+PHP_FUNCTION(memoize_has_storage);
 
 #ifdef HAVE_MEMOIZE_MEMCACHED
 	PHP_FUNCTION(memoize_memcached_set_connection);

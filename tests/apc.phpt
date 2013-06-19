@@ -1,7 +1,7 @@
 --TEST--
 memoize - apc
 --SKIPIF--
-<?php if (!extension_loaded("apc") || !extension_loaded("memoize_apc")) { die("skip"); } ?>
+<?php if (!extension_loaded("memoize") || !extension_loaded("apc") || !memoize_has_storage("apc")) { die("skip"); } ?>
 --INI--
 memoize.storage_module=apc
 apc.enabled=1
